@@ -50,14 +50,14 @@ func NewPromClient(addr string) (PromClient, error) {
 func (p *promClient) QueryByNodeIP(metricName, ip string) (string, error) {
 	klog.V(4).Infof("Try to query %s by node IP[%s]", metricName, ip)
 
-	querySelector := fmt.Sprintf("%s{instance=~\"%s\"} /100", metricName, ip)
+	querySelector := fmt.Sprintf("%s{instance=~\"%s\"}", metricName, ip)
 
 	result, err := p.query(querySelector)
 	if result != "" && err == nil {
 		return result, nil
 	}
 
-	querySelector = fmt.Sprintf("%s{instance=~\"%s:.+\"} /100", metricName, ip)
+	querySelector = fmt.Sprintf("%s{instance=~\"%s:.+\"}", metricName, ip)
 	result, err = p.query(querySelector)
 	if result != "" && err == nil {
 		return result, nil
@@ -69,7 +69,7 @@ func (p *promClient) QueryByNodeIP(metricName, ip string) (string, error) {
 func (p *promClient) QueryByNodeName(metricName, name string) (string, error) {
 	klog.V(4).Infof("Try to query %s by node name[%s]", metricName, name)
 
-	querySelector := fmt.Sprintf("%s{instance=~\"%s\"} /100", metricName, name)
+	querySelector := fmt.Sprintf("%s{instance=~\"%s\"}", metricName, name)
 
 	result, err := p.query(querySelector)
 	if result != "" && err == nil {
