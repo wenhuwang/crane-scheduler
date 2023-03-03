@@ -106,6 +106,10 @@ all: test scheduler controller
 scheduler: ## Build binary with the crane scheduler.
 	CGO_ENABLED=0 GOOS=$(GOOS) go build -ldflags $(LDFLAGS) -o bin/scheduler cmd/scheduler/main.go
 
+.PHONY: mac-scheduler
+scheduler: ## Build binary with the crane scheduler.
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/scheduler cmd/scheduler/main.go
+
 .PHONY: controller
 controller: ## Build binary with the controller.
 	CGO_ENABLED=0 GOOS=$(GOOS) go build -ldflags $(LDFLAGS) -o bin/controller cmd/controller/main.go
@@ -116,6 +120,10 @@ images: image-scheduler image-controller
 .PHONY: image-scheduler
 image-scheduler: ## Build docker image with the crane scheduler.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=scheduler -t ${SCHEDULER_IMG} .
+
+.PHONY: mac-image-scheduler
+mac-image-scheduler: ## Build docker image on macbook with the crane scheduler.
+	docker buildx build --platform=linux/amd64 --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=scheduler -t ${SCHEDULER_IMG} .
 
 .PHONY: image-controller
 image-controller: ## Build docker image with the controller.

@@ -1,13 +1,12 @@
-package v1beta3
+package v1beta1
 
 var (
 	defaultNodeResource = []string{"cpu"}
 )
 
 func SetDefaults_DynamicArgs(obj *DynamicArgs) {
-	if obj.PolicyConfigPath == nil {
-		path := "/etc/kubernetes/dynamic-scheduler-policy.yaml"
-		obj.PolicyConfigPath = &path
+	if obj.PolicyConfigPath == "" {
+		obj.PolicyConfigPath = "/etc/kubernetes/dynamic-scheduler-policy.yaml"
 	}
 	return
 }

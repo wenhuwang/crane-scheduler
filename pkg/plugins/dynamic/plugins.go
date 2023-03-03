@@ -7,7 +7,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/scheduler/framework"
+	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/config"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
@@ -24,7 +24,7 @@ const (
 
 // Dynamic-scheduler is a real load-aware scheduler plugin.
 type DynamicScheduler struct {
-	handle          framework.Handle
+	handle          framework.FrameworkHandle
 	schedulerPolicy *policy.DynamicSchedulerPolicy
 }
 
@@ -90,7 +90,7 @@ func (ds *DynamicScheduler) Score(ctx context.Context, state *framework.CycleSta
 
 	score = score - int(hotValue*10)
 
-	finalScore := utils.NormalizeScore(int64(score),framework.MaxNodeScore,framework.MinNodeScore)
+	finalScore := utils.NormalizeScore(int64(score), framework.MaxNodeScore, framework.MinNodeScore)
 
 	klog.V(4).Infof("[crane] Node[%s]'s final score is %d, while score is %d and hot value is %f", node.Name, finalScore, score, hotValue)
 
@@ -102,7 +102,7 @@ func (ds *DynamicScheduler) ScoreExtensions() framework.ScoreExtensions {
 }
 
 // NewDynamicScheduler returns a Crane Scheduler object.
-func NewDynamicScheduler(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
+func NewDynamicScheduler(plArgs runtime.Object, h framework.FrameworkHandle) (framework.Plugin, error) {
 	args, ok := plArgs.(*config.DynamicArgs)
 	if !ok {
 		return nil, fmt.Errorf("want args to be of type DynamicArgs, got %T.", plArgs)

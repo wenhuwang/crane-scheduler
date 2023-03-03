@@ -67,7 +67,7 @@ There are two options:
    ```
    2) Modify configfile of kube-scheduler(`scheduler-config.yaml`) to enable Dynamic scheduler plugin and configure plugin args:
    ```yaml
-   apiVersion: kubescheduler.config.k8s.io/v1beta2
+   apiVersion: kubescheduler.config.k8s.io/v1beta1
    kind: KubeSchedulerConfiguration
    ...
    profiles:
