@@ -73,11 +73,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 // PreScore invoked at the PreScore extension point.
 // It records the number of available nodes for priority to metrics && logs.
 func (ds *DynamicScheduler) PreScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodes []*v1.Node) *framework.Status {
-	nodeNames := make([]string, len(nodes), len(nodes))
-	for i, node := range nodes {
-		nodeNames[i] = node.Name
-	}
-	klog.V(4).Infof("[crane] pod %s/%s available scoring nodes: %v", pod.Namespace, pod.Name, nodeNames)
+	klog.V(4).Infof("[crane] pod %s/%s available scoring nodes number %d", pod.Namespace, pod.Name, len(nodes))
 
 	defer func() {
 		metrics.DynamicPriorityAvailableNodesNumber.WithLabelValues("PreScore").Set(float64(len(nodes)))
@@ -130,6 +126,8 @@ func NewDynamicScheduler(plArgs runtime.Object, h framework.Handle) (framework.P
 	if err != nil {
 		return nil, fmt.Errorf("failed to get scheduler policy from config file: %v", err)
 	}
+
+	metrics.RegisterDynamicSchedulerMetrics()
 
 	return &DynamicScheduler{
 		schedulerPolicy: schedulerPolicy,
