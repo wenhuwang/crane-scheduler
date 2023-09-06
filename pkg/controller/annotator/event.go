@@ -105,12 +105,22 @@ func (e *eventController) reconcile(key string) error {
 		return err
 	}
 
+	// Storage history schedule event to BindingHeap
 	binding, err := translateEventToBinding(event)
 	if err != nil {
 		return err
 	}
-
 	e.bindingRecords.AddBinding(binding)
+
+	// Real-time updates node hotvalue annotations
+	node, err := e.nodeLister.Get(binding.Node)
+	if err != nil {
+		return fmt.Errorf("can not find node[%s]: %v", node, err)
+	}
+	err = annotateNodeHotValue(e.kubeClient, e.bindingRecords, node, e.policy)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

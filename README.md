@@ -19,37 +19,31 @@ metadata:
         role: alert-rules
 spec:
     groups:
-    - name: cpu_mem_usage_active
-      interval: 30s
+    - name: node.rules
+      interval: 1m
       rules:
       - record: cpu_usage_active
-        expr: 1 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[30s])))
+        expr: 1 - (avg by (cluster, instance) (irate(node_cpu_seconds_total{mode="idle"}[30s])))
       - record: mem_usage_active
         expr: 1-node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes
-    - name: cpu-usage-5m
-      interval: 5m
-      rules:
       - record: cpu_usage_max_avg_1h
         expr: max_over_time(cpu_usage_avg_5m[1h])
       - record: cpu_usage_max_avg_1d
         expr: max_over_time(cpu_usage_avg_5m[1d])
-    - name: cpu-usage-1m
-      interval: 1m
-      rules:
       - record: cpu_usage_avg_5m
         expr: avg_over_time(cpu_usage_active[5m])
-    - name: mem-usage-5m
-      interval: 5m
-      rules:
       - record: mem_usage_max_avg_1h
         expr: max_over_time(mem_usage_avg_5m[1h])
       - record: mem_usage_max_avg_1d
         expr: max_over_time(mem_usage_avg_5m[1d])
-    - name: mem-usage-1m
-      interval: 1m
-      rules:
       - record: mem_usage_avg_5m
         expr: avg_over_time(mem_usage_active[5m])
+      - record: load1_usage_avg_3m
+        expr: label_replace(avg_over_time(node:load1:ratio[3m]), "instance", "$1", "node", "(.*)")
+      - record: load5_usage_max_1h
+        expr: label_replace(max_over_time(node:load5:ratio[1h]), "instance", "$1", "node", "(.*)")
+      - record: load5_usage_max_1d
+        expr: label_replace(max_over_time(node:load5:ratio[1d]), "instance", "$1", "node", "(.*)")
 ```
 >**⚠️Troubleshooting:** The sampling interval of Prometheus must be less than 30 seconds, otherwise the above rules(such as cpu_usage_active) may not take effect.
 

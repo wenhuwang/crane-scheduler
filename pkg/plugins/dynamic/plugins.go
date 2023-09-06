@@ -11,11 +11,13 @@ import (
 
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/config"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
+	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic/metrics"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 )
 
 var _ framework.FilterPlugin = &DynamicScheduler{}
 var _ framework.ScorePlugin = &DynamicScheduler{}
+var _ framework.PreScorePlugin = &DynamicScheduler{}
 
 const (
 	// Name is the name of the plugin used in the plugin registry and configurations.
@@ -68,6 +70,22 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 	return framework.NewStatus(framework.Success, "")
 }
 
+// PreScore invoked at the PreScore extension point.
+// It records the number of available nodes for priority to metrics && logs.
+func (ds *DynamicScheduler) PreScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodes []*v1.Node) *framework.Status {
+	nodeNames := make([]string, len(nodes), len(nodes))
+	for i, node := range nodes {
+		nodeNames[i] = node.Name
+	}
+	klog.V(4).Infof("[crane] pod %s/%s available scoring nodes: %v", pod.Namespace, pod.Name, nodeNames)
+
+	defer func() {
+		metrics.DynamicPriorityAvailableNodesNumber.WithLabelValues("PreScore").Set(float64(len(nodes)))
+	}()
+
+	return framework.NewStatus(framework.Success, "")
+}
+
 // Score invoked at the Score extension point.
 // It gets metric data from node annotation, and favors nodes with the least real resource usage.
 func (ds *DynamicScheduler) Score(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) (int64, *framework.Status) {
@@ -90,7 +108,7 @@ func (ds *DynamicScheduler) Score(ctx context.Context, state *framework.CycleSta
 
 	score = score - int(hotValue*10)
 
-	finalScore := utils.NormalizeScore(int64(score),framework.MaxNodeScore,framework.MinNodeScore)
+	finalScore := utils.NormalizeScore(int64(score), framework.MaxNodeScore, framework.MinNodeScore)
 
 	klog.V(4).Infof("[crane] Node[%s]'s final score is %d, while score is %d and hot value is %f", node.Name, finalScore, score, hotValue)
 

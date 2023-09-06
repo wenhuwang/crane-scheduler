@@ -1,4 +1,5 @@
 GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
 # Git information
 GIT_VERSION ?= $(shell git describe --tags --always)
@@ -104,11 +105,11 @@ all: test scheduler controller
 
 .PHONY: scheduler
 scheduler: ## Build binary with the crane scheduler.
-	CGO_ENABLED=0 GOOS=$(GOOS) go build -ldflags $(LDFLAGS) -o bin/scheduler cmd/scheduler/main.go
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags $(LDFLAGS) -o bin/scheduler cmd/scheduler/main.go
 
 .PHONY: controller
 controller: ## Build binary with the controller.
-	CGO_ENABLED=0 GOOS=$(GOOS) go build -ldflags $(LDFLAGS) -o bin/controller cmd/controller/main.go
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags $(LDFLAGS) -o bin/controller cmd/controller/main.go
 
 .PHONY: images
 images: image-scheduler image-controller
@@ -117,9 +118,17 @@ images: image-scheduler image-controller
 image-scheduler: ## Build docker image with the crane scheduler.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=scheduler -t ${SCHEDULER_IMG} .
 
+.PHONY: mac-image-scheduler
+mac-image-scheduler: ## Build docker image on macbook with the crane scheduler.
+	docker buildx build --platform=linux/amd64 --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=scheduler -t ${SCHEDULER_IMG} .
+
 .PHONY: image-controller
 image-controller: ## Build docker image with the controller.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=controller -t ${CONTROLLER_IMG} .
+
+.PHONY: mac-image-controller
+mac-image-controller: ## Build docker image with the controller.
+	docker buildx build --platform=linux/amd64 --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=controller -t ${CONTROLLER_IMG} .
 
 .PHONY: push-images
 push-images: push-image-scheduler push-image-controller
