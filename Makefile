@@ -1,6 +1,7 @@
 GOOS ?= $(shell go env GOOS)
 
 # Git information
+GIT_BRANCH ?= $(shell git branch --show-current)
 GIT_VERSION ?= $(shell git describe --tags --always)
 GIT_COMMIT_HASH ?= $(shell git rev-parse HEAD)
 GIT_TREESTATE = "clean"
@@ -16,14 +17,14 @@ LDFLAGS = "-X github.com/gocrane/crane-scheduler/pkg/version.gitVersion=$(GIT_VE
                       -X github.com/gocrane/crane-scheduler/pkg/version.buildDate=$(BUILDDATE)"
 
 # Images management
-REGISTRY ?= docker.io
-REGISTRY_NAMESPACE ?= gocrane
+REGISTRY ?= registry.ztosys.com
+REGISTRY_NAMESPACE ?= kubernetes
 REGISTRY_USER_NAME?=""
 REGISTRY_PASSWORD?=""
 
 # Image URL to use all building/pushing image targets
-SCHEDULER_IMG ?= "${REGISTRY}/${REGISTRY_NAMESPACE}/crane-scheduler:${GIT_VERSION}"
-CONTROLLER_IMG ?= "${REGISTRY}/${REGISTRY_NAMESPACE}/crane-scheduler-controller:${GIT_VERSION}"
+SCHEDULER_IMG ?= "${REGISTRY}/${REGISTRY_NAMESPACE}/crane-scheduler:${GIT_BRANCH}-${GIT_VERSION}"
+CONTROLLER_IMG ?= "${REGISTRY}/${REGISTRY_NAMESPACE}/crane-scheduler-controller:${GIT_BRANCH}-${GIT_VERSION}"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -124,6 +125,10 @@ image-scheduler: ## Build docker image with the crane scheduler.
 .PHONY: mac-image-scheduler
 mac-image-scheduler: ## Build docker image on macbook with the crane scheduler.
 	docker buildx build --platform=linux/amd64 --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=scheduler -t ${SCHEDULER_IMG} .
+
+.PHONY: mac-image-controller
+mac-image-controller: ## Build docker image on macbook with the crane controller.
+	docker buildx build --platform=linux/amd64 --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=controller -t ${CONTROLLER_IMG} .
 
 .PHONY: image-controller
 image-controller: ## Build docker image with the controller.
