@@ -90,7 +90,7 @@ func (br *BindingRecords) GetLastNodeBindingCount(node string, timeRange time.Du
 		}
 	}
 
-	klog.V(4).Infof("The total Binding count is %d, while node[%s] count is %d",
+	klog.V(6).Infof("The total Binding count is %d, while node[%s] count is %d",
 		len(*br.bindings), node, cnt)
 
 	return cnt
@@ -101,7 +101,7 @@ func (br *BindingRecords) BindingsGC() {
 	br.rw.Lock()
 	defer br.rw.Unlock()
 
-	klog.V(4).Infof("GC period is %f", br.gcTimeRange.Seconds())
+	klog.V(6).Infof("GC period is %f", br.gcTimeRange.Seconds())
 
 	if br.gcTimeRange == 0 {
 		return

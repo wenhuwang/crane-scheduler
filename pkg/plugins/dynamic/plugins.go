@@ -3,12 +3,15 @@ package dynamic
 import (
 	"context"
 	"fmt"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 
+	"github.com/gocrane/crane-scheduler/pkg/controller/annotator"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/config"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic/metrics"
@@ -18,6 +21,7 @@ import (
 var _ framework.FilterPlugin = &DynamicScheduler{}
 var _ framework.ScorePlugin = &DynamicScheduler{}
 var _ framework.PreScorePlugin = &DynamicScheduler{}
+var _ framework.PostBindPlugin = &DynamicScheduler{}
 
 const (
 	// Name is the name of the plugin used in the plugin registry and configurations.
@@ -28,6 +32,7 @@ const (
 type DynamicScheduler struct {
 	handle          framework.FrameworkHandle
 	schedulerPolicy *policy.DynamicSchedulerPolicy
+	bindingRecords  *annotator.BindingRecords
 }
 
 // Name returns name of the plugin.
@@ -100,16 +105,33 @@ func (ds *DynamicScheduler) Score(ctx context.Context, state *framework.CycleSta
 		nodeAnnotations = map[string]string{}
 	}
 
-	score, hotValue := getNodeScore(node.Name, nodeAnnotations, ds.schedulerPolicy.Spec), getNodeHotValue(node)
-	finalScore := utils.NormalizeScore(int64(score-int(hotValue*10)), framework.MaxNodeScore, framework.MinNodeScore)
+	// 计算节点热点值
+	var hotValue float32
+	for _, hv := range ds.schedulerPolicy.Spec.HotValue {
+		hotValue += float32(ds.bindingRecords.GetLastNodeBindingCount(nodeName, hv.TimeRange.Duration)) / float32((hv.Count))
+	}
 
-	klog.V(4).Infof("[crane] Node[%s]'s final score is %d, while score is %d and hot value is %f", node.Name, finalScore, score, hotValue)
+	score := getNodeScore(node.Name, nodeAnnotations, ds.schedulerPolicy.Spec)
+	finalScore := utils.NormalizeScore(int64(score-int(hotValue*10)), framework.MaxNodeScore, framework.MinNodeScore)
+	klog.V(4).Infof("[crane] Node[%s]'s final score is %d, while score is %d and hotValue is %.2f", node.Name, finalScore, score, hotValue)
 
 	return finalScore, nil
 }
 
 func (ds *DynamicScheduler) ScoreExtensions() framework.ScoreExtensions {
 	return nil
+}
+
+// pod调度完成以后将调度信息记录到bindingRecords中，用于后续的热点值计算
+func (ds *DynamicScheduler) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
+	binding := &annotator.Binding{
+		Node:      nodeName,
+		Namespace: p.Namespace,
+		PodName:   p.Name,
+		Timestamp: time.Now().UTC().Unix(),
+	}
+	ds.bindingRecords.AddBinding(binding)
+	klog.V(4).Infof("[crane] pod %s/%s post bind to node %s", p.Namespace, p.Name, nodeName)
 }
 
 // NewDynamicScheduler returns a Crane Scheduler object.
@@ -126,8 +148,15 @@ func NewDynamicScheduler(plArgs runtime.Object, h framework.FrameworkHandle) (fr
 
 	metrics.RegisterDynamicSchedulerMetrics()
 
-	return &DynamicScheduler{
+	dynamicScheduler := &DynamicScheduler{
 		schedulerPolicy: schedulerPolicy,
 		handle:          h,
-	}, nil
+		bindingRecords:  annotator.NewBindingRecords(1024, 5*time.Minute),
+	}
+
+	// 定时清理bindingRecords heap中过期的数据
+	stopCh := make(chan struct{})
+	go wait.Until(dynamicScheduler.bindingRecords.BindingsGC, time.Minute, stopCh)
+
+	return dynamicScheduler, nil
 }

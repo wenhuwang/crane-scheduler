@@ -160,7 +160,7 @@ func getNodeHotValue(node *v1.Node) float64 {
 		return 0
 	}
 
-	klog.V(4).Infof("[crane] Node[%s]'s hotvalue is %f\n", node.Name, hotvalue)
+	klog.V(6).Infof("[crane] Node[%s]'s hotvalue is %f\n", node.Name, hotvalue)
 
 	return hotvalue
 }
