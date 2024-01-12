@@ -17,8 +17,8 @@ LDFLAGS = "-X github.com/gocrane/crane-scheduler/pkg/version.gitVersion=$(GIT_VE
                       -X github.com/gocrane/crane-scheduler/pkg/version.buildDate=$(BUILDDATE)"
 
 # Images management
-REGISTRY ?= registry.ztosys.com
-REGISTRY_NAMESPACE ?= kubernetes
+REGISTRY ?= docker.io
+REGISTRY_NAMESPACE ?= wenhuwang
 REGISTRY_USER_NAME?=""
 REGISTRY_PASSWORD?=""
 
