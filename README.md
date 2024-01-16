@@ -1,5 +1,9 @@
 # Crane-scheduler
 
+## 新特性
+- 避免热点调度问题：将计算热点调度逻辑集成到调度器进程内部从而解决了各种场景热点调度问题，包括但不限于：deployment/statefulset管理的服务、Job类型以及批量创建Pod类型业务
+
+
 ## Overview
 Crane-scheduler is a collection of scheduler plugins based on [scheduler framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/), including:
 
