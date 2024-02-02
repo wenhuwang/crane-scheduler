@@ -72,7 +72,7 @@ func (n *nodeController) processNextWorkItem() bool {
 func (n *nodeController) syncNode(key string) (bool, error) {
 	startTime := time.Now()
 	defer func() {
-		klog.V(5).Infof("Finished syncing node event %q (%v)", key, time.Since(startTime))
+		klog.V(6).Infof("Finished syncing node event %q (%v)", key, time.Since(startTime))
 	}()
 
 	nodeName, metricName, err := splitMetaKeyWithMetricName(key)
@@ -142,8 +142,8 @@ func patchNodeAnnotation(kubeClient clientset.Interface, node *v1.Node, key, val
 	patchData := fmt.Sprintf(patchAnnotationTemplate, operator, key, value+","+utils.GetLocalTime())
 
 	_, err := kubeClient.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.JSONPatchType, []byte(patchData), metav1.PatchOptions{})
-	if err != nil {
-		klog.V(6).Infof("Patch node[%s] annotation[%s] value is %s", node.Name, key, value)
+	if err == nil {
+		klog.V(6).Infof("Patch node %s annotation %s value is %s", node.Name, key, value)
 	}
 	return err
 }

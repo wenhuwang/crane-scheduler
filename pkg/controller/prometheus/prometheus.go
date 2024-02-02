@@ -25,6 +25,8 @@ type PromClient interface {
 	QueryByNodeName(string, string) (string, error)
 	// QueryByNodeIPWithOffset queries data by node IP with offset.
 	QueryByNodeIPWithOffset(string, string, string) (string, error)
+	// QueryByDeployment queries data by deployment.
+	QueryByDeployment(string, string) (string, error)
 }
 
 type promClient struct {
@@ -48,16 +50,16 @@ func NewPromClient(addr string) (PromClient, error) {
 }
 
 func (p *promClient) QueryByNodeIP(metricName, ip string) (string, error) {
-	klog.V(4).Infof("Try to query %s by node IP[%s]", metricName, ip)
+	klog.V(6).Infof("Try to query %s by node IP[%s]", metricName, ip)
 
-	querySelector := fmt.Sprintf("%s{instance=~\"%s\"} /100", metricName, ip)
+	querySelector := fmt.Sprintf("%s{instance=~\"%s\"}", metricName, ip)
 
 	result, err := p.query(querySelector)
 	if result != "" && err == nil {
 		return result, nil
 	}
 
-	querySelector = fmt.Sprintf("%s{instance=~\"%s:.+\"} /100", metricName, ip)
+	querySelector = fmt.Sprintf("%s{instance=~\"%s:.+\"}", metricName, ip)
 	result, err = p.query(querySelector)
 	if result != "" && err == nil {
 		return result, nil
@@ -67,9 +69,9 @@ func (p *promClient) QueryByNodeIP(metricName, ip string) (string, error) {
 }
 
 func (p *promClient) QueryByNodeName(metricName, name string) (string, error) {
-	klog.V(4).Infof("Try to query %s by node name[%s]", metricName, name)
+	klog.V(6).Infof("Try to query %s by node name[%s]", metricName, name)
 
-	querySelector := fmt.Sprintf("%s{instance=~\"%s\"} /100", metricName, name)
+	querySelector := fmt.Sprintf("%s{instance=~\"%s\"}", metricName, name)
 
 	result, err := p.query(querySelector)
 	if result != "" && err == nil {
@@ -80,15 +82,15 @@ func (p *promClient) QueryByNodeName(metricName, name string) (string, error) {
 }
 
 func (p *promClient) QueryByNodeIPWithOffset(metricName, ip, offset string) (string, error) {
-	klog.V(4).Info("Try to query %s with offset %s by node IP[%s]", metricName, offset, ip)
+	klog.V(6).Info("Try to query %s with offset %s by node IP[%s]", metricName, offset, ip)
 
-	querySelector := fmt.Sprintf("%s{instance=~\"%s\"} offset %s /100", metricName, ip, offset)
+	querySelector := fmt.Sprintf("%s{instance=~\"%s\"} offset %s", metricName, ip, offset)
 	result, err := p.query(querySelector)
 	if result != "" && err == nil {
 		return result, nil
 	}
 
-	querySelector = fmt.Sprintf("%s{instance=~\"%s:.+\"} offset %s /100", metricName, ip, offset)
+	querySelector = fmt.Sprintf("%s{instance=~\"%s:.+\"} offset %s", metricName, ip, offset)
 	result, err = p.query(querySelector)
 	if result != "" && err == nil {
 		return result, nil
@@ -97,8 +99,20 @@ func (p *promClient) QueryByNodeIPWithOffset(metricName, ip, offset string) (str
 	return "", err
 }
 
+func (p *promClient) QueryByDeployment(metricName, deployment string) (string, error) {
+	klog.V(6).Infof("Try to query %s by deployment[%s]", metricName, deployment)
+
+	querySelector := fmt.Sprintf("%s{deployment=\"%s\"}", metricName, deployment)
+	result, err := p.query(querySelector)
+	if result != "" && err == nil {
+		return result, nil
+	}
+
+	return "", err
+}
+
 func (p *promClient) query(query string) (string, error) {
-	klog.V(4).Infof("Begin to query prometheus by promQL [%s]...", query)
+	klog.V(6).Infof("Begin to query prometheus by promQL [%s]...", query)
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultPrometheusQueryTimeout)
 	defer cancel()

@@ -18,8 +18,8 @@ func splitMetaKeyWithMetricName(key string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func handlingMetaKeyWithMetricName(nodeName, metricName string) string {
-	return nodeName + "/" + metricName
+func handlingMetaKeyWithMetricName(name, metricName string) string {
+	return name + "/" + metricName
 }
 
 func getMaxHotVauleTimeRange(hotValues []policy.HotValuePolicy) time.Duration {

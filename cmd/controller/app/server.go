@@ -61,9 +61,11 @@ func Run(cc *config.CompletedConfig, stopCh <-chan struct{}) error {
 	klog.Infof("Starting Controller version %+v", version.Get())
 
 	run := func(ctx context.Context) {
-		annotatorController := annotator.NewNodeAnnotator(
+		annotatorController := annotator.NewAnnotator(
 			cc.KubeInformerFactory.Core().V1().Nodes(),
 			cc.KubeInformerFactory.Core().V1().Events(),
+			cc.KubeInformerFactory.Core().V1().Namespaces(),
+			cc.KubeInformerFactory.Apps().V1().Deployments(),
 			cc.KubeClient,
 			cc.PromClient,
 			*cc.Policy,

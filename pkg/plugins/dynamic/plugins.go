@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	applisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog/v2"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 
@@ -33,6 +34,7 @@ type DynamicScheduler struct {
 	handle          framework.FrameworkHandle
 	schedulerPolicy *policy.DynamicSchedulerPolicy
 	bindingRecords  *annotator.BindingRecords
+	deployLister    applisters.DeploymentLister
 }
 
 // Name returns name of the plugin.
@@ -63,7 +65,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 		activeDuration, err := getActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
 
 		if err != nil || activeDuration == 0 {
-			klog.Warningf("[crane] failed to get active duration: %v", err)
+			klog.Warningf("[crane - %s] failed to get active duration: %v", ds.Name(), err)
 			continue
 		}
 
@@ -78,7 +80,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 // PreScore invoked at the PreScore extension point.
 // It records the number of available nodes for priority to metrics && logs.
 func (ds *DynamicScheduler) PreScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodes []*v1.Node) *framework.Status {
-	klog.V(4).Infof("[crane] pod %s/%s available scoring nodes number %d", pod.Namespace, pod.Name, len(nodes))
+	klog.V(4).Infof("[crane - %s] pod %s/%s available scoring nodes number %d", ds.Name(), pod.Namespace, pod.Name, len(nodes))
 
 	defer func() {
 		metrics.DynamicPriorityAvailableNodesNumber.WithLabelValues("PreScore").Set(float64(len(nodes)))
@@ -113,7 +115,7 @@ func (ds *DynamicScheduler) Score(ctx context.Context, state *framework.CycleSta
 
 	score := getNodeScore(node.Name, nodeAnnotations, ds.schedulerPolicy.Spec)
 	finalScore := utils.NormalizeScore(int64(score-int(hotValue*10)), framework.MaxNodeScore, framework.MinNodeScore)
-	klog.V(4).Infof("[crane] Node[%s]'s final score is %d, while score is %d and hotValue is %.2f", node.Name, finalScore, score, hotValue)
+	klog.V(4).Infof("[crane - %s] Node[%s]'s final score is %d, while score is %d and hotValue is %.2f", ds.Name(), node.Name, finalScore, score, hotValue)
 
 	return finalScore, nil
 }
@@ -131,7 +133,7 @@ func (ds *DynamicScheduler) PostBind(ctx context.Context, state *framework.Cycle
 		Timestamp: time.Now().UTC().Unix(),
 	}
 	ds.bindingRecords.AddBinding(binding)
-	klog.V(4).Infof("[crane] pod %s/%s post bind to node %s", p.Namespace, p.Name, nodeName)
+	klog.V(4).Infof("[crane - %s] pod %s/%s post bind to node %s", ds.Name(), p.Namespace, p.Name, nodeName)
 }
 
 // NewDynamicScheduler returns a Crane Scheduler object.
@@ -146,12 +148,14 @@ func NewDynamicScheduler(plArgs runtime.Object, h framework.FrameworkHandle) (fr
 		return nil, fmt.Errorf("failed to get scheduler policy from config file: %v", err)
 	}
 
+	// 注册metrics
 	metrics.RegisterDynamicSchedulerMetrics()
 
 	dynamicScheduler := &DynamicScheduler{
 		schedulerPolicy: schedulerPolicy,
 		handle:          h,
 		bindingRecords:  annotator.NewBindingRecords(1024, 5*time.Minute),
+		deployLister:    h.SharedInformerFactory().Apps().V1().Deployments().Lister(),
 	}
 
 	// 定时清理bindingRecords heap中过期的数据
