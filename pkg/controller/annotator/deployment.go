@@ -3,8 +3,10 @@ package annotator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	prom "github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	policy "github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
 	utils "github.com/gocrane/crane-scheduler/pkg/utils"
@@ -86,8 +88,15 @@ func (c *deploymentController) syncDeployment(key string) (bool, error) {
 }
 
 func annotateDeploymentLoad(promClient prom.PromClient, kubeClient clientset.Interface, deployment *appsv1.Deployment, metricName string) error {
-	value, err := promClient.QueryByDeployment(metricName, deployment.Name)
-	if err == nil && len(value) > 0 {
+	var value string
+	var err error
+	if strings.HasPrefix(metricName, prometheus.PrefixRange) {
+		metricName = strings.TrimPrefix(metricName, prometheus.PrefixRange)
+		value, err = promClient.QueryRangeByDeployment(metricName, deployment.Name)
+	} else {
+		value, err = promClient.QueryByDeployment(metricName, deployment.Name)
+	}
+	if err == nil {
 		return patchDeploymentAnnotation(kubeClient, deployment, metricName, value)
 	}
 	return fmt.Errorf("failed to get deployment %s metrics %s: %v", metricName, deployment.Name, err)

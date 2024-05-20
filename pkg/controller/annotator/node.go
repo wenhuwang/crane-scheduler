@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -16,6 +17,7 @@ import (
 
 	policy "github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
 
+	"github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	prom "github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	utils "github.com/gocrane/crane-scheduler/pkg/utils"
 )
@@ -98,16 +100,28 @@ func (n *nodeController) syncNode(key string) (bool, error) {
 	return true, nil
 }
 
-func annotateNodeLoad(promClient prom.PromClient, kubeClient clientset.Interface, node *v1.Node, key string) error {
-	value, err := promClient.QueryByNodeIP(key, getNodeInternalIP(node))
-	if err == nil && len(value) > 0 {
-		return patchNodeAnnotation(kubeClient, node, key, value)
+func annotateNodeLoad(promClient prom.PromClient, kubeClient clientset.Interface, node *v1.Node, key string) (err error) {
+	if strings.HasPrefix(key, prometheus.PrefixRange) {
+		key = strings.TrimPrefix(key, prometheus.PrefixRange)
+		value, err := promClient.QueryRangeByNodeIP(key, getNodeInternalIP(node))
+		if err == nil {
+			return patchNodeAnnotation(kubeClient, node, key, value)
+		}
+		value, err = promClient.QueryRangeByNodeName(key, getNodeName(node))
+		if err == nil {
+			return patchNodeAnnotation(kubeClient, node, key, value)
+		}
+	} else {
+		value, err := promClient.QueryByNodeIP(key, getNodeInternalIP(node))
+		if err == nil {
+			return patchNodeAnnotation(kubeClient, node, key, value)
+		}
+		value, err = promClient.QueryByNodeName(key, getNodeName(node))
+		if err == nil {
+			return patchNodeAnnotation(kubeClient, node, key, value)
+		}
 	}
-	value, err = promClient.QueryByNodeName(key, getNodeName(node))
-	if err == nil && len(value) > 0 {
-		return patchNodeAnnotation(kubeClient, node, key, value)
-	}
-	return fmt.Errorf("failed to get data %s{%s=%s}: %v", key, node.Name, value, err)
+	return fmt.Errorf("failed to get data %s{nodeName=%s}: %v", key, node.Name, err)
 }
 
 func annotateNodeHotValue(kubeClient clientset.Interface, br *BindingRecords, node *v1.Node, policy policy.DynamicSchedulerPolicy) error {
