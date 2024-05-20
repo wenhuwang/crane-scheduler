@@ -87,19 +87,19 @@ func (c *deploymentController) syncDeployment(key string) (bool, error) {
 	return true, nil
 }
 
-func annotateDeploymentLoad(promClient prom.PromClient, kubeClient clientset.Interface, deployment *appsv1.Deployment, metricName string) error {
+func annotateDeploymentLoad(promClient prom.PromClient, kubeClient clientset.Interface, deployment *appsv1.Deployment, key string) error {
 	var value string
 	var err error
-	if strings.HasPrefix(metricName, prometheus.PrefixRange) {
-		metricName = strings.TrimPrefix(metricName, prometheus.PrefixRange)
+	if strings.HasPrefix(key, prometheus.PrefixRange) {
+		metricName := strings.TrimPrefix(key, prometheus.PrefixRange)
 		value, err = promClient.QueryRangeByDeployment(metricName, deployment.Name)
 	} else {
-		value, err = promClient.QueryByDeployment(metricName, deployment.Name)
+		value, err = promClient.QueryByDeployment(key, deployment.Name)
 	}
 	if err == nil {
-		return patchDeploymentAnnotation(kubeClient, deployment, metricName, value)
+		return patchDeploymentAnnotation(kubeClient, deployment, key, value)
 	}
-	return fmt.Errorf("failed to get deployment %s metrics %s: %v", metricName, deployment.Name, err)
+	return fmt.Errorf("failed to get deployment %s metrics %s: %v", key, deployment.Name, err)
 }
 
 func patchDeploymentAnnotation(kubeClient clientset.Interface, deployment *appsv1.Deployment, key, value string) error {

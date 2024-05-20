@@ -102,12 +102,12 @@ func (n *nodeController) syncNode(key string) (bool, error) {
 
 func annotateNodeLoad(promClient prom.PromClient, kubeClient clientset.Interface, node *v1.Node, key string) (err error) {
 	if strings.HasPrefix(key, prometheus.PrefixRange) {
-		key = strings.TrimPrefix(key, prometheus.PrefixRange)
-		value, err := promClient.QueryRangeByNodeIP(key, getNodeInternalIP(node))
+		metricName := strings.TrimPrefix(key, prometheus.PrefixRange)
+		value, err := promClient.QueryRangeByNodeIP(metricName, getNodeInternalIP(node))
 		if err == nil {
 			return patchNodeAnnotation(kubeClient, node, key, value)
 		}
-		value, err = promClient.QueryRangeByNodeName(key, getNodeName(node))
+		value, err = promClient.QueryRangeByNodeName(metricName, getNodeName(node))
 		if err == nil {
 			return patchNodeAnnotation(kubeClient, node, key, value)
 		}
