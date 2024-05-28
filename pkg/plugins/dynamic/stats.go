@@ -27,7 +27,7 @@ const (
 )
 
 // inActivePeriod judges if node annotation with this timestamp is effective.
-func inActivePeriod(updatetimeStr string, activeDuration time.Duration) bool {
+func InActivePeriod(updatetimeStr string, activeDuration time.Duration) bool {
 	if len(updatetimeStr) < MinTimestampStrLength {
 		klog.Errorf("[crane] illegel timestamp: %s", updatetimeStr)
 		return false
@@ -59,7 +59,7 @@ func getResourceUsage(anno map[string]string, key string, activeDuration time.Du
 		return 0, fmt.Errorf("illegel value: %s", usedstr)
 	}
 
-	if !inActivePeriod(usedSlice[1], activeDuration) {
+	if !InActivePeriod(usedSlice[1], activeDuration) {
 		return 0, fmt.Errorf("timestamp[%s] is expired", usedstr)
 	}
 
@@ -76,7 +76,7 @@ func getResourceUsage(anno map[string]string, key string, activeDuration time.Du
 }
 
 func getScore(anno map[string]string, priorityPolicy policy.PriorityPolicy, syncPeriod []policy.SyncPolicy) (float64, error) {
-	activeDuration, err := getActiveDuration(syncPeriod, priorityPolicy.Name)
+	activeDuration, err := GetActiveDuration(syncPeriod, priorityPolicy.Name)
 	if err != nil || activeDuration == 0 {
 		return 0, fmt.Errorf("failed to get the active duration of resource[%s]: %v, while the actual value is %v", priorityPolicy.Name, err, activeDuration)
 	}
@@ -137,7 +137,7 @@ func getNodeScore(name string, anno map[string]string, policySpec policy.PolicyS
 	return finnalScore
 }
 
-func getActiveDuration(syncPeriodList []policy.SyncPolicy, name string) (time.Duration, error) {
+func GetActiveDuration(syncPeriodList []policy.SyncPolicy, name string) (time.Duration, error) {
 	for _, period := range syncPeriodList {
 		if period.Name == name {
 			if period.Period.Duration != 0 {

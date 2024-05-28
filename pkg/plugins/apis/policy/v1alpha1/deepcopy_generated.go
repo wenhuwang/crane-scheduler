@@ -62,6 +62,13 @@ func (in *PolicySpec) DeepCopyInto(out *PolicySpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.SyncAppPeriod != nil {
+		in, out := &in.SyncAppPeriod, &out.SyncAppPeriod
+		*out = make([]SyncPolicy, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Predicate != nil {
 		in, out := &in.Predicate, &out.Predicate
 		*out = make([]PredicatePolicy, len(*in))

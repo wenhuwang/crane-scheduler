@@ -131,6 +131,7 @@ func Convert_policy_HotValuePolicy_To_v1alpha1_HotValuePolicy(in *policy.HotValu
 
 func autoConvert_v1alpha1_PolicySpec_To_policy_PolicySpec(in *PolicySpec, out *policy.PolicySpec, s conversion.Scope) error {
 	out.SyncPeriod = *(*[]policy.SyncPolicy)(unsafe.Pointer(&in.SyncPeriod))
+	out.SyncAppPeriod = *(*[]policy.SyncPolicy)(unsafe.Pointer(&in.SyncAppPeriod))
 	out.Predicate = *(*[]policy.PredicatePolicy)(unsafe.Pointer(&in.Predicate))
 	out.Priority = *(*[]policy.PriorityPolicy)(unsafe.Pointer(&in.Priority))
 	out.HotValue = *(*[]policy.HotValuePolicy)(unsafe.Pointer(&in.HotValue))
@@ -144,6 +145,7 @@ func Convert_v1alpha1_PolicySpec_To_policy_PolicySpec(in *PolicySpec, out *polic
 
 func autoConvert_policy_PolicySpec_To_v1alpha1_PolicySpec(in *policy.PolicySpec, out *PolicySpec, s conversion.Scope) error {
 	out.SyncPeriod = *(*[]SyncPolicy)(unsafe.Pointer(&in.SyncPeriod))
+	out.SyncAppPeriod = *(*[]SyncPolicy)(unsafe.Pointer(&in.SyncAppPeriod))
 	out.Predicate = *(*[]PredicatePolicy)(unsafe.Pointer(&in.Predicate))
 	out.Priority = *(*[]PriorityPolicy)(unsafe.Pointer(&in.Priority))
 	out.HotValue = *(*[]HotValuePolicy)(unsafe.Pointer(&in.HotValue))

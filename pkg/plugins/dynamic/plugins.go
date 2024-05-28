@@ -59,7 +59,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 	}
 
 	for _, policy := range ds.schedulerPolicy.Spec.Predicate {
-		activeDuration, err := getActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
+		activeDuration, err := GetActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
 
 		if err != nil || activeDuration == 0 {
 			klog.Warningf("[crane] failed to get active duration: %v", err)
@@ -141,7 +141,7 @@ func NewDynamicScheduler(plArgs runtime.Object, h framework.Handle) (framework.P
 		return nil, fmt.Errorf("want args to be of type DynamicArgs, got %T.", plArgs)
 	}
 
-	schedulerPolicy, err := LoadPolicyFromFile(args.PolicyConfigPath)
+	schedulerPolicy, err := utils.LoadPolicyFromFile(args.PolicyConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get scheduler policy from config file: %v", err)
 	}

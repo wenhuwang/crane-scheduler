@@ -12,10 +12,11 @@ type DynamicSchedulerPolicy struct {
 }
 
 type PolicySpec struct {
-	SyncPeriod []SyncPolicy
-	Predicate  []PredicatePolicy
-	Priority   []PriorityPolicy
-	HotValue   []HotValuePolicy
+	SyncPeriod    []SyncPolicy
+	SyncAppPeriod []SyncPolicy
+	Predicate     []PredicatePolicy
+	Priority      []PriorityPolicy
+	HotValue      []HotValuePolicy
 }
 
 type SyncPolicy struct {
