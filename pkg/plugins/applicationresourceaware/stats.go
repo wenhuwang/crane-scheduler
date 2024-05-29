@@ -44,7 +44,7 @@ func predictingOverLoad(nodeUsageStr, deployUsageStr string, policy policy.Predi
 		}
 		usages[i] = usage
 	}
-	klog.V(6).Infof("[%s] node[%s] predicted usages is %v", Name, nodeName, usages)
+	klog.V(6).Infof("[%s] node[%s] policy[%s] predicted usages is %v", Name, nodeName, policy.Name, usages)
 	return false
 }
 
