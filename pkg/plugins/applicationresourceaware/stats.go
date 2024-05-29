@@ -14,14 +14,12 @@ import (
 const (
 	// ExtraActivePeriod gives extra active time to the annotation.
 	ExtraActivePeriod = 5 * time.Minute
-
-	RangePrefix = "range"
 )
 
-func predictingOverLoad(nodeUsageStr, deployUsageStr string, policy policy.PredicatePolicy, nodeAllocation int64) bool {
+func predictingOverLoad(nodeUsageStr, deployUsageStr string, policy policy.PredicatePolicy, nodeCapacity int64, nodeName string) bool {
 	// threshold was set as 0 means that the filter according to this metric is useless.
 	if policy.MaxLimitPecent == 0 {
-		klog.V(4).Infof("[crane] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", policy.Name)
+		klog.V(4).Infof("[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name, policy.Name)
 		return false
 	}
 
@@ -38,12 +36,15 @@ func predictingOverLoad(nodeUsageStr, deployUsageStr string, policy policy.Predi
 		return false
 	}
 
+	usages := make([]float64, len(nodeUsage))
 	for i, nu := range nodeUsage {
-		if (nu*float64(nodeAllocation)+deployUsage[i])/float64(nodeAllocation) > policy.MaxLimitPecent {
+		usage := (nu*float64(nodeCapacity) + deployUsage[i]) / float64(nodeCapacity)
+		if usage > policy.MaxLimitPecent {
 			return true
 		}
+		usages[i] = usage
 	}
-
+	klog.V(6).Infof("[%s] node[%s] predicted usages is %v", Name, nodeName, usages)
 	return false
 }
 

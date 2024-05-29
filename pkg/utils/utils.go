@@ -15,6 +15,8 @@ const (
 	TimeFormat       = "2006-01-02T15:04:05Z"
 	DefaultTimeZone  = "Asia/Shanghai"
 	DefaultNamespace = "crane-system"
+
+	RangePrefix = "range"
 )
 
 // IsDaemonsetPod judges if this pod belongs to one daemonset workload.

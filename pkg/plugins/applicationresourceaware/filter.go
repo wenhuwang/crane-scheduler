@@ -37,7 +37,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 
 	// predicate policy naming rules is range:RESOURCE:APP_METRIC_NAME:NODE_METRIC_NAME
 	for _, policy := range ara.schedulerPolicy.Spec.Predicate {
-		if strings.HasPrefix(policy.Name, RangePrefix) {
+		if strings.HasPrefix(policy.Name, utils.RangePrefix) {
 			nameSlice, err := parsePolicyName(policy.Name)
 			if err != nil {
 				continue
@@ -45,36 +45,36 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 			resource, deployMetricName, nodeMetricName := nameSlice[1], nameSlice[2], nameSlice[3]
 			activeDuration, err := dynamic.GetActiveDuration(ara.schedulerPolicy.Spec.SyncPeriod, nodeMetricName)
 			if err != nil || activeDuration == 0 {
-				klog.Warningf("[crane-%s] failed to get active duration: %v", ara.Name(), err)
+				klog.Warningf("[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
 			nodeUsages, err := getResourceUsage(node.Annotations, nodeMetricName, activeDuration)
 			if err != nil {
-				klog.Warningf("[crane-%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", ara.Name(), policy.Name, node.Name, err)
+				klog.Warningf("[%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", ara.Name(), nodeMetricName, node.Name, err)
 				continue
 			}
 
 			activeDuration, err = dynamic.GetActiveDuration(ara.schedulerPolicy.Spec.SyncAppPeriod, deployMetricName)
 			if err != nil || activeDuration == 0 {
-				klog.Warningf("[crane-%s] failed to get active duration: %v", ara.Name(), err)
+				klog.Warningf("[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
 			deployUsages, err := getResourceUsage(deploy.Annotations, deployMetricName, activeDuration)
 			if err != nil {
-				klog.Warningf("[crane-%s] can not get the usage of resource[%s] from deployment[%s]'s annotation: %v", ara.Name(), policy.Name, node.Name, err)
+				klog.Warningf("[%s] can not get the usage of resource[%s] from deployment[%s]'s annotation: %v", ara.Name(), deployMetricName, deploy.Name, err)
 				continue
 			}
 
-			var nodeAllocation int64
+			var nodeCapacity int64
 			if resource == "cpu" {
-				nodeAllocation = nodeInfo.Allocatable.MilliCPU
-				klog.V(4).Infof("[crane-%s] node[%s] cpu allocation is %d", ara.Name(), node.Name, nodeAllocation)
+				nodeCapacity = node.Status.Capacity.Cpu().Value()
+				klog.V(4).Infof("[%s] node[%s] cpu allocation is %d", ara.Name(), node.Name, nodeCapacity)
 			} else if resource == "memory" {
-				nodeAllocation = nodeInfo.Allocatable.Memory
-				klog.V(4).Infof("[crane-%s] node[%s] memory allocation is %d", ara.Name(), node.Name, nodeAllocation)
+				nodeCapacity = node.Status.Capacity.Memory().Value()
+				klog.V(4).Infof("[%s] node[%s] memory allocation is %d", ara.Name(), node.Name, nodeCapacity)
 			}
-			if predictingOverLoad(nodeUsages, deployUsages, policy, nodeAllocation) {
-				return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Plugin[%s] policy[%s] of node[%s] is too high", ara.Name(), policy.Name, node.Name))
+			if predictingOverLoad(nodeUsages, deployUsages, policy, nodeCapacity, node.Name) {
+				return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name))
 			}
 		}
 	}

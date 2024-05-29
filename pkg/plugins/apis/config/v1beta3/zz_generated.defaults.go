@@ -17,6 +17,9 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&NodeResourceTopologyMatchArgs{}, func(obj interface{}) {
 		SetObjectDefaults_NodeResourceTopologyMatchArgs(obj.(*NodeResourceTopologyMatchArgs))
 	})
+	scheme.AddTypeDefaultingFunc(&ApplicationResourceAwareArgs{}, func(obj interface{}) {
+		SetObjectDefaults_ApplicationResourceAwareArgs(obj.(*ApplicationResourceAwareArgs))
+	})
 	return nil
 }
 
@@ -26,4 +29,8 @@ func SetObjectDefaults_DynamicArgs(in *DynamicArgs) {
 
 func SetObjectDefaults_NodeResourceTopologyMatchArgs(in *NodeResourceTopologyMatchArgs) {
 	SetDefaults_NodeResourceTopologyMatchArgs(in)
+}
+
+func SetObjectDefaults_ApplicationResourceAwareArgs(in *ApplicationResourceAwareArgs) {
+	SetDefaults_ApplicationResourceAwareArgs(in)
 }

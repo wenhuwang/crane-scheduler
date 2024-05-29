@@ -21,3 +21,12 @@ type NodeResourceTopologyMatchArgs struct {
 	// TopologyAwareResources represents the resource names of topology.
 	TopologyAwareResources []string
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ApplicationResourceAwareArgs is the args struction of ApplicationResourceAware scheduler plugin.
+type ApplicationResourceAwareArgs struct {
+	metav1.TypeMeta
+	// PolicyConfigPath specified the path of policy config.
+	PolicyConfigPath string
+}

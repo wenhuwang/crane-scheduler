@@ -36,9 +36,9 @@ func (ara *ApplicationResourceAware) Name() string {
 
 // New returns a ApplicationResourceAware Scheduler object.
 func New(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
-	args, ok := plArgs.(*config.DynamicArgs)
+	args, ok := plArgs.(*config.ApplicationResourceAwareArgs)
 	if !ok {
-		return nil, fmt.Errorf("want args to be of type DynamicArgs, got %T.", plArgs)
+		return nil, fmt.Errorf("want args to be of type ApplicationResourceAwareArgs, got %T.", plArgs)
 	}
 
 	schedulerPolicy, err := utils.LoadPolicyFromFile(args.PolicyConfigPath)
@@ -51,7 +51,7 @@ func New(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	deployLister := informerFactory.Apps().V1().Deployments().Lister()
 	rsLister := informerFactory.Apps().V1().ReplicaSets().Lister()
 
-	klog.V(5).Infof("Start %f InformerFactory", Name)
+	klog.V(5).Infof("Start plugin %s InformerFactory", Name)
 	informerFactory.Start(ctx.Done())
 	informerFactory.WaitForCacheSync(ctx.Done())
 
