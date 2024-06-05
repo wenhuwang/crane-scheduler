@@ -21,7 +21,6 @@ import (
 
 // Controller is Controller for node && deployment annotator.
 type Controller struct {
-	nodeInformer       coreinformers.NodeInformer
 	nodeInformerSynced cache.InformerSynced
 	nodeLister         corelisters.NodeLister
 
@@ -34,6 +33,9 @@ type Controller struct {
 
 	deploymentLister         applisters.DeploymentLister
 	deploymentInformerSynced cache.InformerSynced
+	replicaSetLister         applisters.ReplicaSetLister
+	podInformer              coreinformers.PodInformer
+	podInformerSynced        cache.InformerSynced
 
 	kubeClient clientset.Interface
 	promClient prom.PromClient
@@ -48,22 +50,26 @@ func NewAnnotator(
 	eventInformer coreinformers.EventInformer,
 	namespaceInformer coreinformers.NamespaceInformer,
 	deploymentInformer appinformers.DeploymentInformer,
+	replicaSetLister appinformers.ReplicaSetInformer,
+	podInformer coreinformers.PodInformer,
 	kubeClient clientset.Interface,
 	promClient prom.PromClient,
 	policy policy.DynamicSchedulerPolicy,
 	bingdingHeapSize int32,
 ) *Controller {
 	return &Controller{
-		nodeInformer:             nodeInformer,
 		nodeInformerSynced:       nodeInformer.Informer().HasSynced,
 		nodeLister:               nodeInformer.Lister(),
 		namespaceLister:          namespaceInformer.Lister(),
 		namespaceInformerSynced:  namespaceInformer.Informer().HasSynced,
 		deploymentLister:         deploymentInformer.Lister(),
 		deploymentInformerSynced: deploymentInformer.Informer().HasSynced,
+		replicaSetLister:         replicaSetLister.Lister(),
 		eventInformer:            eventInformer,
 		eventInformerSynced:      eventInformer.Informer().HasSynced,
 		eventLister:              eventInformer.Lister(),
+		podInformer:              podInformer,
+		podInformerSynced:        podInformer.Informer().HasSynced,
 		kubeClient:               kubeClient,
 		promClient:               promClient,
 		policy:                   policy,
@@ -78,10 +84,13 @@ func (c *Controller) Run(worker int, stopCh <-chan struct{}) error {
 	eventController := newEventController(c)
 	c.eventInformer.Informer().AddEventHandler(eventController.handles())
 
+	podController := newPodController(c)
+	c.podInformer.Informer().AddEventHandler(podController.handles())
+
 	nodeController := newNodeController(c)
 	deploymentController := newDeploymentController(c)
 
-	if !cache.WaitForCacheSync(stopCh, c.nodeInformerSynced, c.eventInformerSynced, c.namespaceInformerSynced, c.deploymentInformerSynced) {
+	if !cache.WaitForCacheSync(stopCh, c.nodeInformerSynced, c.eventInformerSynced, c.namespaceInformerSynced, c.deploymentInformerSynced, c.podInformerSynced) {
 		return fmt.Errorf("failed to wait for cache sync for annotator")
 	}
 	klog.Info("Caches are synced for controller")
@@ -90,6 +99,7 @@ func (c *Controller) Run(worker int, stopCh <-chan struct{}) error {
 		go wait.Until(nodeController.Run, time.Second, stopCh)
 		go wait.Until(eventController.Run, time.Second, stopCh)
 		go wait.Until(deploymentController.Run, time.Second, stopCh)
+		go wait.Until(podController.Run, time.Second, stopCh)
 	}
 
 	go wait.Until(c.bindingRecords.BindingsGC, time.Minute, stopCh)

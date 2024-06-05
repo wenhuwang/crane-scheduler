@@ -62,7 +62,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 	}
 
 	for _, policy := range ds.schedulerPolicy.Spec.Predicate {
-		activeDuration, err := getActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
+		activeDuration, err := utils.GetActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
 
 		if err != nil || activeDuration == 0 {
 			klog.Warningf("[crane - %s] failed to get active duration: %v", ds.Name(), err)

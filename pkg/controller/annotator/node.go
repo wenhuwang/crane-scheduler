@@ -1,16 +1,13 @@
 package annotator
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
@@ -105,20 +102,20 @@ func annotateNodeLoad(promClient prom.PromClient, kubeClient clientset.Interface
 		metricName := strings.TrimPrefix(key, prometheus.PrefixRange)
 		value, err := promClient.QueryRangeByNodeIP(metricName, getNodeInternalIP(node))
 		if err == nil {
-			return patchNodeAnnotation(kubeClient, node, key, value)
+			return utils.PatchNodeAnnotation(kubeClient, node, key, value)
 		}
 		value, err = promClient.QueryRangeByNodeName(metricName, getNodeName(node))
 		if err == nil {
-			return patchNodeAnnotation(kubeClient, node, key, value)
+			return utils.PatchNodeAnnotation(kubeClient, node, key, value)
 		}
 	} else {
 		value, err := promClient.QueryByNodeIP(key, getNodeInternalIP(node))
 		if err == nil {
-			return patchNodeAnnotation(kubeClient, node, key, value)
+			return utils.PatchNodeAnnotation(kubeClient, node, key, value)
 		}
 		value, err = promClient.QueryByNodeName(key, getNodeName(node))
 		if err == nil {
-			return patchNodeAnnotation(kubeClient, node, key, value)
+			return utils.PatchNodeAnnotation(kubeClient, node, key, value)
 		}
 	}
 	return fmt.Errorf("failed to get data %s{nodeName=%s}: %v", key, node.Name, err)
@@ -131,35 +128,7 @@ func annotateNodeHotValue(kubeClient clientset.Interface, br *BindingRecords, no
 		value += br.GetLastNodeBindingCount(node.Name, p.TimeRange.Duration) / p.Count
 	}
 
-	return patchNodeAnnotation(kubeClient, node, HotValueKey, strconv.Itoa(value))
-}
-
-func patchNodeAnnotation(kubeClient clientset.Interface, node *v1.Node, key, value string) error {
-	annotation := node.GetAnnotations()
-	if annotation == nil {
-		annotation = map[string]string{}
-	}
-
-	operator := "add"
-	_, exist := annotation[key]
-	if exist {
-		operator = "replace"
-	}
-
-	patchAnnotationTemplate :=
-		`[{
-		"op": "%s",
-		"path": "/metadata/annotations/%s",
-		"value": "%s"
-	}]`
-
-	patchData := fmt.Sprintf(patchAnnotationTemplate, operator, key, value+","+utils.GetLocalTime())
-
-	_, err := kubeClient.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.JSONPatchType, []byte(patchData), metav1.PatchOptions{})
-	if err == nil {
-		klog.V(6).Infof("Patch node %s annotation %s value is %s", node.Name, key, value)
-	}
-	return err
+	return utils.PatchNodeAnnotation(kubeClient, node, HotValueKey, strconv.Itoa(value))
 }
 
 func (n *nodeController) CreateMetricSyncTicker(stopCh <-chan struct{}) {

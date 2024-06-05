@@ -51,7 +51,7 @@ func (c *deploymentController) processNextWorkItem() bool {
 
 	forget, err := c.syncDeployment(key.(string))
 	if err != nil {
-		klog.Errorf("error syncing deployment %q, requeuing: %v", key.(string), err)
+		klog.Errorf("error syncing deployment metrics %q, requeuing: %v", key.(string), err)
 		c.queue.AddRateLimited(key)
 		return true
 	}
@@ -64,7 +64,7 @@ func (c *deploymentController) processNextWorkItem() bool {
 func (c *deploymentController) syncDeployment(key string) (bool, error) {
 	startTime := time.Now()
 	defer func() {
-		klog.V(6).Infof("Finished syncing deployment event (%v)", key, time.Since(startTime))
+		klog.V(6).Infof("Finished syncing deployment event %q (%v)", key, time.Since(startTime))
 	}()
 
 	namespace, metricsName, err := splitMetaKeyWithMetricName(key)
@@ -99,7 +99,12 @@ func annotateDeploymentLoad(promClient prom.PromClient, kubeClient clientset.Int
 	if err == nil {
 		return patchDeploymentAnnotation(kubeClient, deployment, key, value)
 	}
-	return fmt.Errorf("failed to get deployment %s metrics %s: %v", key, deployment.Name, err)
+
+	// 避免副本数为0导致没有监控指标问题
+	if *deployment.Spec.Replicas >= 1 {
+		return fmt.Errorf("failed to get deployment %s metrics %s: %v", key, deployment.Name, err)
+	}
+	return nil
 }
 
 func patchDeploymentAnnotation(kubeClient clientset.Interface, deployment *appsv1.Deployment, key, value string) error {
