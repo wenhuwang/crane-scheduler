@@ -17,6 +17,8 @@ const (
 	DefaultNamespace = "crane-system"
 
 	RangePrefix = "range"
+
+	DeltaPrefixName = "delta_"
 )
 
 // IsDaemonsetPod judges if this pod belongs to one daemonset workload.
@@ -103,4 +105,17 @@ func ParseRangeMetricsByString(str string) ([]float64, error) {
 	}
 
 	return result, nil
+}
+
+func GetDeltaUsageRange(anno map[string]string, key string) (string, error) {
+	deltaStr, ok := anno[key]
+	if !ok {
+		return "", nil
+	}
+
+	usedSlice := strings.Split(deltaStr, ",")
+	if len(usedSlice) != 2 {
+		return "", fmt.Errorf("illegel value: %s", deltaStr)
+	}
+	return usedSlice[0], nil
 }

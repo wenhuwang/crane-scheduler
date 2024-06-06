@@ -65,6 +65,13 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				continue
 			}
 
+			deltaName := utils.DeltaPrefixName + policy.Name
+			deltaUsages, err := utils.GetDeltaUsageRange(node.Annotations, deltaName)
+			if err != nil {
+				klog.Warningf("get node %s metrics %s from annotation failed: %v", node.Name, deltaName, err)
+				continue
+			}
+
 			var nodeCapacity int64
 			if resource == "cpu" {
 				nodeCapacity = node.Status.Capacity.Cpu().Value()
@@ -73,7 +80,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				nodeCapacity = node.Status.Capacity.Memory().Value()
 				klog.V(4).Infof("[%s] node[%s] memory capacity is %d", ara.Name(), node.Name, nodeCapacity)
 			}
-			if predictingOverLoad(nodeUsages, deployUsages, policy, nodeCapacity, node.Name) {
+			if predictingOverLoad(nodeUsages, deployUsages, deltaUsages, policy, nodeCapacity, node.Name) {
 				return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name))
 			}
 		}

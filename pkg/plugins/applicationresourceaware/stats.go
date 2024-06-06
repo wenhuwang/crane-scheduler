@@ -16,7 +16,7 @@ const (
 	ExtraActivePeriod = 5 * time.Minute
 )
 
-func predictingOverLoad(nodeUsageStr, deployUsageStr string, policy policy.PredicatePolicy, nodeCapacity int64, nodeName string) bool {
+func predictingOverLoad(nodeUsageStr, deployUsageStr, deltaUsageStr string, policy policy.PredicatePolicy, nodeCapacity int64, nodeName string) bool {
 	// threshold was set as 0 means that the filter according to this metric is useless.
 	if policy.MaxLimitPecent == 0 {
 		klog.V(4).Infof("[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name, policy.Name)
@@ -31,14 +31,18 @@ func predictingOverLoad(nodeUsageStr, deployUsageStr string, policy policy.Predi
 	if err != nil {
 		return false
 	}
-	if len(nodeUsage) != len(deployUsage) {
-		klog.V(4).Info("node or deployment usage annotations values illegel")
+	deltaUsage, err := utils.ParseRangeMetricsByString(deltaUsageStr)
+	if err != nil {
+		return false
+	}
+	if len(nodeUsage) != len(deployUsage) || len(nodeUsage) != len(deltaUsage) {
+		klog.V(4).Info("node or deployment or delta usage annotations values illegel")
 		return false
 	}
 
 	usages := make([]float64, len(nodeUsage))
 	for i, nu := range nodeUsage {
-		usage := (nu*float64(nodeCapacity) + deployUsage[i]) / float64(nodeCapacity)
+		usage := (nu*float64(nodeCapacity) + deployUsage[i] + deltaUsage[i]) / float64(nodeCapacity)
 		if usage > policy.MaxLimitPecent {
 			return true
 		}
