@@ -17,6 +17,7 @@ import (
 	"github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	prom "github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	utils "github.com/gocrane/crane-scheduler/pkg/utils"
+	"github.com/robfig/cron/v3"
 )
 
 const (
@@ -70,8 +71,9 @@ func (n *nodeController) processNextWorkItem() bool {
 
 func (n *nodeController) syncNode(key string) (bool, error) {
 	startTime := time.Now()
+	klog.V(5).Infof("Started syncing node event %q (%v)", key, time.Since(startTime))
 	defer func() {
-		klog.V(6).Infof("Finished syncing node event %q (%v)", key, time.Since(startTime))
+		klog.V(5).Infof("Finished syncing node event %q (%v)", key, time.Since(startTime))
 	}()
 
 	nodeName, metricName, err := splitMetaKeyWithMetricName(key)
@@ -132,12 +134,13 @@ func annotateNodeHotValue(kubeClient clientset.Interface, br *BindingRecords, no
 }
 
 func (n *nodeController) CreateMetricSyncTicker(stopCh <-chan struct{}) {
-
+	klog.V(4).Infof("start sync node metrics ticker")
 	for _, p := range n.policy.Spec.SyncPeriod {
 		enqueueFunc := func(policy policy.SyncPolicy) {
 			nodes, err := n.nodeLister.List(labels.Everything())
 			if err != nil {
-				panic(fmt.Errorf("failed to list nodes: %v", err))
+				klog.Errorf("failed to list nodes: %v", err)
+				return
 			}
 
 			for _, node := range nodes {
@@ -174,4 +177,88 @@ func getNodeInternalIP(node *v1.Node) string {
 
 func getNodeName(node *v1.Node) string {
 	return node.Name
+}
+
+type nodeDeltaResetController struct {
+	*Controller
+	queue workqueue.RateLimitingInterface
+}
+
+func newNodeDeltaResetController(c *Controller) *nodeDeltaResetController {
+	nodeRateLimiter := workqueue.NewItemExponentialFailureRateLimiter(DefaultBackOff,
+		MaxBackOff)
+
+	return &nodeDeltaResetController{
+		Controller: c,
+		queue:      workqueue.NewNamedRateLimitingQueue(nodeRateLimiter, "node_delta_event_queue"),
+	}
+}
+
+func (ndr *nodeDeltaResetController) Run() {
+	defer ndr.queue.ShutDown()
+	klog.Infof("Start to reconcile node events")
+
+	for ndr.processNextWorkItem() {
+	}
+}
+
+func (ndr *nodeDeltaResetController) processNextWorkItem() bool {
+	key, quit := ndr.queue.Get()
+	if quit {
+		return false
+	}
+	defer ndr.queue.Done(key)
+
+	forget, err := ndr.syncNode(key.(string))
+	if err != nil {
+		klog.Warningf("failed to sync this node [%q]: %v", key.(string), err)
+	}
+	if forget {
+		ndr.queue.Forget(key)
+		return true
+	}
+
+	ndr.queue.AddRateLimited(key)
+	return true
+}
+
+func (ndr *nodeDeltaResetController) syncNode(key string) (bool, error) {
+	startTime := time.Now()
+	klog.V(5).Infof("Started syncing node event %q (%v)", key, time.Since(startTime))
+	defer func() {
+		klog.V(5).Infof("Finished syncing node event %q (%v)", key, time.Since(startTime))
+	}()
+
+	node, err := ndr.nodeLister.Get(key)
+	if err != nil {
+		return true, fmt.Errorf("can not find node[%s]: %v", node, err)
+	}
+
+	for k := range node.GetAnnotations() {
+		if strings.HasPrefix(k, utils.DeltaPrefixName) {
+			if err := utils.DeleteNodeAnnotation(ndr.kubeClient, node, k); err != nil {
+				return false, fmt.Errorf("can't delete deleta annotate node[%s]: %v", node.Name, err)
+			}
+		}
+	}
+
+	return true, nil
+}
+
+func (ndr *nodeDeltaResetController) CreateMetricResetTicker(stopCh <-chan struct{}) {
+	klog.V(4).Infof("start reset node delta annotations ticker")
+	c := cron.New()
+	c.AddFunc("0 0 * * *", func() {
+		nodes, err := ndr.nodeLister.List(labels.Everything())
+		if err != nil {
+			klog.Errorf("failed to list nodes: %v", err)
+			return
+		}
+
+		for _, node := range nodes {
+			ndr.queue.Add(node.Name)
+		}
+	})
+
+	c.Start()
 }

@@ -67,26 +67,28 @@ func (p *podController) handles() cache.ResourceEventHandlerFuncs {
 func (p *podController) handleUpdateEvent(old, new interface{}) {
 	oldPod, newPod := old.(*corev1.Pod), new.(*corev1.Pod)
 	// 只关注pod调度事件和删除事件
-	if oldPod.Spec.NodeName != newPod.Spec.NodeName || (oldPod.DeletionTimestamp == nil && newPod.DeletionTimestamp != nil) {
-		p.enqueue(new, cache.Updated)
-		return
+	if oldPod.Spec.NodeName != newPod.Spec.NodeName {
+		p.enqueue(new, "Scheduled")
+	} else if oldPod.DeletionTimestamp == nil && newPod.DeletionTimestamp != nil {
+		p.enqueue(new, "Deleted")
 	}
+	return
 }
 
-func (p *podController) enqueue(obj interface{}, action cache.DeltaType) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+func (p *podController) enqueue(obj interface{}, action string) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		return
 	}
-	klog.V(6).Infof("enqueue pod %s %s event", key, action)
+	klog.V(5).Infof("enqueue pod %s %s event", key, action)
 	p.queue.Add(key)
 }
 
 func (p *podController) reconcile(key string) error {
-	klog.V(6).Infof("reconcile pod %s", key)
 	startTime := time.Now()
+	klog.V(5).Infof("Started syncing Pod event %q (%v)", key, time.Since(startTime))
 	defer func() {
-		klog.V(6).Infof("Finished syncing Pod event %q (%v)", key, time.Since(startTime))
+		klog.V(5).Infof("Finished syncing Pod event %q (%v)", key, time.Since(startTime))
 	}()
 
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)

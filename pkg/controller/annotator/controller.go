@@ -88,6 +88,7 @@ func (c *Controller) Run(worker int, stopCh <-chan struct{}) error {
 	c.podInformer.Informer().AddEventHandler(podController.handles())
 
 	nodeController := newNodeController(c)
+	nodeDeltaResetController := newNodeDeltaResetController(c)
 	deploymentController := newDeploymentController(c)
 
 	if !cache.WaitForCacheSync(stopCh, c.nodeInformerSynced, c.eventInformerSynced, c.namespaceInformerSynced, c.deploymentInformerSynced, c.podInformerSynced) {
@@ -98,13 +99,18 @@ func (c *Controller) Run(worker int, stopCh <-chan struct{}) error {
 	for i := 0; i < worker; i++ {
 		go wait.Until(nodeController.Run, time.Second, stopCh)
 		go wait.Until(eventController.Run, time.Second, stopCh)
-		go wait.Until(deploymentController.Run, time.Second, stopCh)
 		go wait.Until(podController.Run, time.Second, stopCh)
+		go wait.Until(nodeDeltaResetController.Run, time.Second, stopCh)
+	}
+
+	for i := 0; i < 2*worker; i++ {
+		go wait.Until(deploymentController.Run, time.Second, stopCh)
 	}
 
 	go wait.Until(c.bindingRecords.BindingsGC, time.Minute, stopCh)
 
 	nodeController.CreateMetricSyncTicker(stopCh)
+	nodeDeltaResetController.CreateMetricResetTicker(stopCh)
 	deploymentController.CreateMetricSyncTicker(stopCh)
 
 	<-stopCh

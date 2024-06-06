@@ -10,6 +10,7 @@ import (
 	prom "github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
 	policy "github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
 	utils "github.com/gocrane/crane-scheduler/pkg/utils"
+	"github.com/robfig/cron/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -63,6 +64,7 @@ func (c *deploymentController) processNextWorkItem() bool {
 
 func (c *deploymentController) syncDeployment(key string) (bool, error) {
 	startTime := time.Now()
+	klog.V(6).Infof("Started syncing deployment event %q (%v)", key, time.Since(startTime))
 	defer func() {
 		klog.V(6).Infof("Finished syncing deployment event %q (%v)", key, time.Since(startTime))
 	}()
@@ -135,7 +137,7 @@ func patchDeploymentAnnotation(kubeClient clientset.Interface, deployment *appsv
 	return err
 }
 
-func (c *deploymentController) CreateMetricSyncTicker(stopCh <-chan struct{}) {
+func (c *deploymentController) CreateMetricSyncTicker1(stopCh <-chan struct{}) {
 	for _, p := range c.policy.Spec.SyncAppPeriod {
 		enqueueFunc := func(policy policy.SyncPolicy) {
 			namespaces, err := c.namespaceLister.List(labels.Everything())
@@ -145,9 +147,6 @@ func (c *deploymentController) CreateMetricSyncTicker(stopCh <-chan struct{}) {
 			}
 
 			for _, ns := range namespaces {
-				if ns.Name != "hncp" {
-					continue
-				}
 				c.queue.Add(handlingMetaKeyWithMetricName(ns.Name, policy.Name))
 			}
 		}
@@ -167,4 +166,34 @@ func (c *deploymentController) CreateMetricSyncTicker(stopCh <-chan struct{}) {
 			}
 		}(p)
 	}
+}
+
+type deploymentJob struct {
+	Controller *deploymentController
+	PolicyName string
+}
+
+func (d deploymentJob) Run() {
+	namespaces, err := d.Controller.namespaceLister.List(labels.Everything())
+	if err != nil {
+		klog.Errorf("failed to list namespace: %v", err)
+		return
+	}
+
+	for _, ns := range namespaces {
+		d.Controller.queue.Add(handlingMetaKeyWithMetricName(ns.Name, d.PolicyName))
+	}
+}
+
+func (c *deploymentController) CreateMetricSyncTicker(stopCh <-chan struct{}) {
+	klog.V(4).Infof("start sync deployment controller")
+
+	cr := cron.New()
+	for _, p := range c.policy.Spec.SyncAppPeriod {
+		cr.AddJob("10 0 * * *", deploymentJob{
+			Controller: c,
+			PolicyName: p.Name,
+		})
+	}
+	cr.Start()
 }

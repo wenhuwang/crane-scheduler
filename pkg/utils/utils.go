@@ -212,36 +212,43 @@ func ParseRangeMetricsByString(str string) ([]float64, error) {
 }
 
 func MergeUsageRange(deltaStr string, deployStr string, mergeType string) (string, error) {
-	if deltaStr == "" && deployStr != "" {
+	if deltaStr == "" && mergeType == MergeTypeAdd {
 		return deployStr, nil
 	}
 
-	deltaUsgaes, err := ParseRangeMetricsByString(deltaStr)
-	if err != nil {
-		return "", fmt.Errorf("parse node delta range metrics %s failed: %v", deltaStr, err)
-	}
 	deployUsages, err := ParseRangeMetricsByString(deployStr)
 	if err != nil {
 		return "", fmt.Errorf("parse deployment range metrics %s failed: %v", deployStr, err)
 	}
-	if len(deltaUsgaes) != len(deployUsages) {
-		return "", fmt.Errorf("delta usages length %d or deployment usages length %d not match", len(deltaUsgaes), len(deployUsages))
+
+	var deltaUsages []float64
+	if deltaStr != "" {
+		deltaUsages, err = ParseRangeMetricsByString(deltaStr)
+		if err != nil {
+			return "", fmt.Errorf("parse node delta range metrics %s failed: %v", deltaStr, err)
+		}
+
+		if len(deltaUsages) != len(deployUsages) {
+			return "", fmt.Errorf("delta usages length %d or deployment usages length %d not match", len(deltaUsages), len(deployUsages))
+		}
+	} else {
+		deltaUsages = make([]float64, len(deployUsages))
 	}
 
 	var result string
 	if mergeType == MergeTypeAdd {
-		for i, v := range deltaUsgaes {
+		for i, v := range deltaUsages {
 			usage := v + deployUsages[i]
-			if i < len(deltaUsgaes)-1 {
+			if i < len(deltaUsages)-1 {
 				result += fmt.Sprintf("%.5f|", usage)
 			} else {
 				result += fmt.Sprintf("%.5f", usage)
 			}
 		}
 	} else if mergeType == MergeTypeSub {
-		for i, v := range deltaUsgaes {
+		for i, v := range deltaUsages {
 			usage := v - deployUsages[i]
-			if i < len(deltaUsgaes)-1 {
+			if i < len(deltaUsages)-1 {
 				result += fmt.Sprintf("%.5f|", usage)
 			} else {
 				result += fmt.Sprintf("%.5f", usage)
@@ -272,6 +279,20 @@ func PatchNodeAnnotation(kubeClient clientset.Interface, node *v1.Node, key, val
 
 	patchData := fmt.Sprintf(patchAnnotationTemplate, operator, key, value+","+GetLocalTime())
 
+	if _, err := kubeClient.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.JSONPatchType, []byte(patchData), metav1.PatchOptions{}); err != nil {
+		return fmt.Errorf("patch node failed: %v", err)
+	}
+	return nil
+}
+
+func DeleteNodeAnnotation(kubeClient clientset.Interface, node *v1.Node, key string) error {
+	operator := "remove"
+	patchAnnotationTemplate :=
+		`[{
+		"op": "%s",
+		"path": "/metadata/annotations/%s"
+	}]`
+	patchData := fmt.Sprintf(patchAnnotationTemplate, operator, key)
 	if _, err := kubeClient.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.JSONPatchType, []byte(patchData), metav1.PatchOptions{}); err != nil {
 		return fmt.Errorf("patch node failed: %v", err)
 	}

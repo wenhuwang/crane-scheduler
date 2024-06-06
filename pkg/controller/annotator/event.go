@@ -91,6 +91,7 @@ func (e *eventController) enqueue(obj interface{}, action cache.DeltaType) {
 
 func (e *eventController) reconcile(key string) error {
 	startTime := time.Now()
+	klog.V(5).Infof("Started syncing EVENT event %q (%v)", key, time.Since(startTime))
 	defer func() {
 		klog.V(5).Infof("Finished syncing EVENT event %q (%v)", key, time.Since(startTime))
 	}()
