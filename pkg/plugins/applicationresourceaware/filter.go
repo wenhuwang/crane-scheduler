@@ -81,6 +81,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				klog.V(4).Infof("[%s] node[%s] memory capacity is %d", ara.Name(), node.Name, nodeCapacity)
 			}
 			if predictingOverLoad(nodeUsages, deployUsages, deltaUsages, policy, nodeCapacity, node.Name) {
+				klog.V(4).Infof("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name)
 				return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name))
 			}
 		}
