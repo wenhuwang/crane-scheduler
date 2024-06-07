@@ -42,7 +42,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				klog.Warningf("[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
-			nodeUsages, err := getResourceUsage(node.Annotations, nodeMetricName, activeDuration)
+			nodeUsages, err := utils.GetResourceUsageRange(node.Annotations, nodeMetricName, activeDuration)
 			if err != nil {
 				klog.Warningf("[%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", ara.Name(), nodeMetricName, node.Name, err)
 				continue
@@ -53,7 +53,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				klog.Warningf("[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
-			deployUsages, err := getResourceUsage(deploy.Annotations, deployMetricName, activeDuration)
+			deployUsages, err := utils.GetResourceUsageRange(deploy.Annotations, deployMetricName, activeDuration)
 			if err != nil {
 				klog.Warningf("[%s] can not get the usage of resource[%s] from deployment[%s]'s annotation: %v", ara.Name(), deployMetricName, deploy.Name, err)
 				continue
