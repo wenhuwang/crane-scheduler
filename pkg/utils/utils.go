@@ -25,6 +25,7 @@ const (
 	DefaultNamespace = "crane-system"
 
 	DeltaPrefixName = "delta_"
+	RangePrefix     = "range"
 
 	MergeTypeAdd = "addition"
 	MergeTypeSub = "subtraction"
@@ -121,7 +122,7 @@ func GetResourceUsage(anno map[string]string, key string, activeDuration time.Du
 		return 0, fmt.Errorf("illegel value: %s", usedstr)
 	}
 
-	if !inActivePeriod(usedSlice[1], activeDuration) {
+	if !InActivePeriod(usedSlice[1], activeDuration) {
 		return 0, fmt.Errorf("timestamp[%s] is expired", usedstr)
 	}
 
@@ -148,14 +149,14 @@ func GetResourceUsageRange(anno map[string]string, key string, activeDuration ti
 		return "", fmt.Errorf("illegel value: %s", usedstr)
 	}
 
-	if !inActivePeriod(usedSlice[1], activeDuration) {
+	if !InActivePeriod(usedSlice[1], activeDuration) {
 		return "", fmt.Errorf("timestamp[%s] is expired", usedstr)
 	}
 
 	return usedSlice[0], nil
 }
 
-func inActivePeriod(updatetimeStr string, activeDuration time.Duration) bool {
+func InActivePeriod(updatetimeStr string, activeDuration time.Duration) bool {
 	if len(updatetimeStr) < MinTimestampStrLength {
 		klog.Errorf("[crane] illegel timestamp: %s", updatetimeStr)
 		return false

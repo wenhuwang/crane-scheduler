@@ -143,7 +143,7 @@ func NewDynamicScheduler(plArgs runtime.Object, h framework.FrameworkHandle) (fr
 		return nil, fmt.Errorf("want args to be of type DynamicArgs, got %T.", plArgs)
 	}
 
-	schedulerPolicy, err := LoadPolicyFromFile(args.PolicyConfigPath)
+	schedulerPolicy, err := utils.LoadPolicyFromFile(args.PolicyConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get scheduler policy from config file: %v", err)
 	}

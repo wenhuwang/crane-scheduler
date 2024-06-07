@@ -22,6 +22,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&DynamicArgs{},
 		&NodeResourceTopologyMatchArgs{},
+		&ApplicationResourceAwareArgs{},
 	)
 	return nil
 }

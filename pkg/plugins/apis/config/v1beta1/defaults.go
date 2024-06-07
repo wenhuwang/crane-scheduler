@@ -17,3 +17,10 @@ func SetDefaults_NodeResourceTopologyMatchArgs(obj *NodeResourceTopologyMatchArg
 	}
 	return
 }
+
+func SetDefaults_ApplicationResourceAwareArgs(obj *ApplicationResourceAwareArgs) {
+	if obj.PolicyConfigPath == "" {
+		obj.PolicyConfigPath = "/etc/kubernetes/dynamic-scheduler-policy.yaml"
+	}
+	return
+}
