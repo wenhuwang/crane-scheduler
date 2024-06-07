@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
-	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 	"k8s.io/klog/v2"
 )
@@ -59,22 +58,4 @@ func parsePolicyName(name string) ([]string, error) {
 	}
 
 	return nameSlice, nil
-}
-
-func getResourceUsage(anno map[string]string, key string, activeDuration time.Duration) (string, error) {
-	usedstr, ok := anno[key]
-	if !ok {
-		return "", fmt.Errorf("key[%s] not found", usedstr)
-	}
-
-	usedSlice := strings.Split(usedstr, ",")
-	if len(usedSlice) != 2 {
-		return "", fmt.Errorf("illegel value: %s", usedstr)
-	}
-
-	if !dynamic.InActivePeriod(usedSlice[1], activeDuration) {
-		return "", fmt.Errorf("timestamp[%s] is expired", usedstr)
-	}
-
-	return usedSlice[0], nil
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -43,23 +42,23 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				continue
 			}
 			resource, deployMetricName, nodeMetricName := nameSlice[1], nameSlice[2], nameSlice[3]
-			activeDuration, err := dynamic.GetActiveDuration(ara.schedulerPolicy.Spec.SyncPeriod, nodeMetricName)
+			activeDuration, err := utils.GetActiveDuration(ara.schedulerPolicy.Spec.SyncPeriod, nodeMetricName)
 			if err != nil || activeDuration == 0 {
 				klog.Warningf("[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
-			nodeUsages, err := getResourceUsage(node.Annotations, nodeMetricName, activeDuration)
+			nodeUsages, err := utils.GetResourceUsageRange(node.Annotations, nodeMetricName, activeDuration)
 			if err != nil {
 				klog.Warningf("[%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", ara.Name(), nodeMetricName, node.Name, err)
 				continue
 			}
 
-			activeDuration, err = dynamic.GetActiveDuration(ara.schedulerPolicy.Spec.SyncAppPeriod, deployMetricName)
+			activeDuration, err = utils.GetActiveDuration(ara.schedulerPolicy.Spec.SyncAppPeriod, deployMetricName)
 			if err != nil || activeDuration == 0 {
 				klog.Warningf("[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
-			deployUsages, err := getResourceUsage(deploy.Annotations, deployMetricName, activeDuration)
+			deployUsages, err := utils.GetResourceUsageRange(deploy.Annotations, deployMetricName, activeDuration)
 			if err != nil {
 				klog.Warningf("[%s] can not get the usage of resource[%s] from deployment[%s]'s annotation: %v", ara.Name(), deployMetricName, deploy.Name, err)
 				continue
