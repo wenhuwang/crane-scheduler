@@ -15,7 +15,6 @@ import (
 	controllerappconfig "github.com/gocrane/crane-scheduler/cmd/controller/app/config"
 	annotatorconfig "github.com/gocrane/crane-scheduler/pkg/controller/annotator/config"
 	"github.com/gocrane/crane-scheduler/pkg/controller/prometheus"
-	dynamicscheduler "github.com/gocrane/crane-scheduler/pkg/plugins/dynamic"
 	utils "github.com/gocrane/crane-scheduler/pkg/utils"
 )
 
@@ -101,7 +100,7 @@ func (o *Options) Config() (*controllerappconfig.Config, error) {
 		return nil, err
 	}
 
-	c.Policy, err = dynamicscheduler.LoadPolicyFromFile(o.PolicyConfigPath)
+	c.Policy, err = utils.LoadPolicyFromFile(o.PolicyConfigPath)
 	if err != nil {
 		return nil, err
 	}

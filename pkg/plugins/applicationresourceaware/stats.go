@@ -18,36 +18,43 @@ const (
 func predictingOverLoad(nodeUsageStr, deployUsageStr, deltaUsageStr string, policy policy.PredicatePolicy, nodeCapacity int64, nodeName string) bool {
 	// threshold was set as 0 means that the filter according to this metric is useless.
 	if policy.MaxLimitPecent == 0 {
-		klog.V(4).Infof("[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name, policy.Name)
+		klog.Warningf("Plugin[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name, policy.Name)
 		return false
 	}
 
 	nodeUsage, err := utils.ParseRangeMetricsByString(nodeUsageStr)
 	if err != nil {
+		klog.Warningf("Plugin[%s] parse node %s range metrics failed: %v", Name, nodeName, err)
 		return false
 	}
 	deployUsage, err := utils.ParseRangeMetricsByString(deployUsageStr)
 	if err != nil {
-		return false
-	}
-	deltaUsage, err := utils.ParseRangeMetricsByString(deltaUsageStr)
-	if err != nil {
-		return false
-	}
-	if len(nodeUsage) != len(deployUsage) || len(nodeUsage) != len(deltaUsage) {
-		klog.V(4).Info("node or deployment or delta usage annotations values illegel")
+		klog.Warningf("Plugin[%s] parse deployment range metrics failed: %v", Name, err)
 		return false
 	}
 
-	usages := make([]float64, len(nodeUsage))
+	var deltaUsage []float64
+	if deltaUsageStr == "" {
+		deltaUsage = make([]float64, len(nodeUsage))
+	} else {
+		deltaUsage, err = utils.ParseRangeMetricsByString(deltaUsageStr)
+		if err != nil {
+			klog.Warningf("Plugin[%s] parse node %s delta metrics failed: %v", Name, nodeName, err)
+			return false
+		}
+	}
+
+	if len(nodeUsage) != len(deployUsage) || len(nodeUsage) != len(deltaUsage) {
+		klog.Warningf("Plugin[%s] node %s or deployment or delta usage annotations values illegel", Name, nodeName)
+		return false
+	}
+
 	for i, nu := range nodeUsage {
 		usage := (nu*float64(nodeCapacity) + deployUsage[i] + deltaUsage[i]) / float64(nodeCapacity)
 		if usage > policy.MaxLimitPecent {
 			return true
 		}
-		usages[i] = usage
 	}
-	klog.V(6).Infof("[%s] node[%s] policy[%s] predicted usages is %v", Name, nodeName, policy.Name, usages)
 	return false
 }
 
