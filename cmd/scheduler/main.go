@@ -10,6 +10,7 @@ import (
 	"k8s.io/kubernetes/cmd/kube-scheduler/app"
 
 	_ "github.com/gocrane/crane-scheduler/pkg/plugins/apis/config/scheme"
+	"github.com/gocrane/crane-scheduler/pkg/plugins/applicationresourceaware"
 
 	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic"
 )
@@ -18,6 +19,7 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	cmd := app.NewSchedulerCommand(
 		app.WithPlugin(dynamic.Name, dynamic.NewDynamicScheduler),
+		app.WithPlugin(applicationresourceaware.Name, applicationresourceaware.New),
 	)
 
 	logs.InitLogs()
