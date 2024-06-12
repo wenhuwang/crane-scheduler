@@ -36,6 +36,7 @@ require (
 	github.com/gocrane/api v0.7.1-0.20220819080332-e4c0d60e812d
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/common v0.33.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.23.3

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -8,7 +9,12 @@ import (
 	"time"
 
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	clientset "k8s.io/client-go/kubernetes"
 	applisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog/v2"
 )
@@ -18,9 +24,11 @@ const (
 	DefaultTimeZone  = "Asia/Shanghai"
 	DefaultNamespace = "crane-system"
 
-	RangePrefix = "range"
-
 	DeltaPrefixName = "delta_"
+	RangePrefix     = "range"
+
+	MergeTypeAdd = "addition"
+	MergeTypeSub = "subtraction"
 
 	// MinTimestampStrLength defines the min length of timestamp string.
 	MinTimestampStrLength = 5
@@ -82,36 +90,25 @@ func NormalizeScore(value, max, min int64) int64 {
 	return value
 }
 
-func GetDeploymentNameByPod(pod *corev1.Pod, rsLister applisters.ReplicaSetLister) (string, error) {
+func GetDeploymentByPod(pod *corev1.Pod, rsLister applisters.ReplicaSetLister, deployLister applisters.DeploymentLister) (*appsv1.Deployment, error) {
 	for _, ownerRef := range pod.GetOwnerReferences() {
 		if ownerRef.Kind == "ReplicaSet" {
 			rs, err := rsLister.ReplicaSets(pod.Namespace).Get(ownerRef.Name)
 			if err != nil {
-				return "", err
+				return nil, fmt.Errorf("get replicaSet by pod failed: %v", err)
 			}
-			for _, ownownerRef := range rs.GetOwnerReferences() {
-				if ownownerRef.Kind == "Deployment" {
-					return ownownerRef.Name, nil
+			for _, ownerRef := range rs.GetOwnerReferences() {
+				if ownerRef.Kind == "Deployment" {
+					deploy, err := deployLister.Deployments(pod.Namespace).Get(ownerRef.Name)
+					if err != nil {
+						return nil, fmt.Errorf("get deployment by replicaSet failed: %v", err)
+					}
+					return deploy, nil
 				}
 			}
 		}
 	}
-
-	return "", fmt.Errorf("could not find Deployment for pod %s", pod.Name)
-}
-
-func ParseRangeMetricsByString(str string) ([]float64, error) {
-	var result []float64
-	stringSlice := strings.Split(str, "|")
-	for _, v := range stringSlice {
-		fv, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, fv)
-	}
-
-	return result, nil
+	return nil, fmt.Errorf("could not find Deployment for pod %s", pod.Name)
 }
 
 func GetResourceUsage(anno map[string]string, key string, activeDuration time.Duration) (float64, error) {
@@ -159,38 +156,20 @@ func GetResourceUsageRange(anno map[string]string, key string, activeDuration ti
 	return usedSlice[0], nil
 }
 
-func GetDeltaUsageRange(anno map[string]string, key string) (string, error) {
-	deltaStr, ok := anno[key]
-	if !ok {
-		return "", nil
-	}
-
-	usedSlice := strings.Split(deltaStr, ",")
-	if len(usedSlice) != 2 {
-		return "", fmt.Errorf("illegel value: %s", deltaStr)
-	}
-	return usedSlice[0], nil
-}
-
-// inActivePeriod judges if node annotation with this timestamp is effective.
 func InActivePeriod(updatetimeStr string, activeDuration time.Duration) bool {
 	if len(updatetimeStr) < MinTimestampStrLength {
 		klog.Errorf("[crane] illegel timestamp: %s", updatetimeStr)
 		return false
 	}
-
 	originUpdateTime, err := time.ParseInLocation(TimeFormat, updatetimeStr, GetLocation())
 	if err != nil {
 		klog.Errorf("[crane] failed to parse timestamp: %v", err)
 		return false
 	}
-
 	now, updatetime := time.Now(), originUpdateTime.Add(activeDuration)
-
 	if now.Before(updatetime) {
 		return true
 	}
-
 	return false
 }
 
@@ -204,4 +183,119 @@ func GetActiveDuration(syncPeriodList []policy.SyncPolicy, name string) (time.Du
 	}
 
 	return 0, fmt.Errorf("failed to get the active duration")
+}
+
+func GetDeltaUsageRange(anno map[string]string, key string) (string, error) {
+	deltaStr, ok := anno[key]
+	if !ok {
+		return "", nil
+	}
+
+	usedSlice := strings.Split(deltaStr, ",")
+	if len(usedSlice) != 2 {
+		return "", fmt.Errorf("illegel value: %s", deltaStr)
+	}
+	return usedSlice[0], nil
+}
+
+func ParseRangeMetricsByString(str string) ([]float64, error) {
+	var result []float64
+	stringSlice := strings.Split(str, "|")
+	for _, v := range stringSlice {
+		fv, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, fv)
+	}
+
+	return result, nil
+}
+
+func MergeUsageRange(deltaStr string, deployStr string, mergeType string) (string, error) {
+	if deltaStr == "" && mergeType == MergeTypeAdd {
+		return deployStr, nil
+	}
+
+	deployUsages, err := ParseRangeMetricsByString(deployStr)
+	if err != nil {
+		return "", fmt.Errorf("parse deployment range metrics %s failed: %v", deployStr, err)
+	}
+
+	var deltaUsages []float64
+	if deltaStr != "" {
+		deltaUsages, err = ParseRangeMetricsByString(deltaStr)
+		if err != nil {
+			return "", fmt.Errorf("parse node delta range metrics %s failed: %v", deltaStr, err)
+		}
+
+		if len(deltaUsages) != len(deployUsages) {
+			return "", fmt.Errorf("delta usages length %d or deployment usages length %d not match", len(deltaUsages), len(deployUsages))
+		}
+	} else {
+		deltaUsages = make([]float64, len(deployUsages))
+	}
+
+	var result string
+	if mergeType == MergeTypeAdd {
+		for i, v := range deltaUsages {
+			usage := v + deployUsages[i]
+			if i < len(deltaUsages)-1 {
+				result += fmt.Sprintf("%.5f|", usage)
+			} else {
+				result += fmt.Sprintf("%.5f", usage)
+			}
+		}
+	} else if mergeType == MergeTypeSub {
+		for i, v := range deltaUsages {
+			usage := v - deployUsages[i]
+			if i < len(deltaUsages)-1 {
+				result += fmt.Sprintf("%.5f|", usage)
+			} else {
+				result += fmt.Sprintf("%.5f", usage)
+			}
+		}
+	}
+	return result, nil
+}
+
+func PatchNodeAnnotation(kubeClient clientset.Interface, node *v1.Node, key, value string) error {
+	annotation := node.GetAnnotations()
+	if annotation == nil {
+		annotation = map[string]string{}
+	}
+
+	operator := "add"
+	_, exist := annotation[key]
+	if exist {
+		operator = "replace"
+	}
+
+	patchAnnotationTemplate :=
+		`[{
+		"op": "%s",
+		"path": "/metadata/annotations/%s",
+		"value": "%s"
+	}]`
+
+	patchData := fmt.Sprintf(patchAnnotationTemplate, operator, key, value+","+GetLocalTime())
+
+	if _, err := kubeClient.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.JSONPatchType, []byte(patchData), metav1.PatchOptions{}); err != nil {
+		return fmt.Errorf("patch node failed: %v", err)
+	}
+	return nil
+}
+
+func DeleteNodeAnnotation(kubeClient clientset.Interface, node *v1.Node, key string) error {
+	operator := "remove"
+	patchAnnotationTemplate :=
+		`[{
+		"op": "%s",
+		"path": "/metadata/annotations/%s"
+	}]`
+	patchData := fmt.Sprintf(patchAnnotationTemplate, operator, key)
+	if _, err := kubeClient.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.JSONPatchType, []byte(patchData), metav1.PatchOptions{}); err != nil {
+		return fmt.Errorf("patch node failed: %v", err)
+	}
+	return nil
 }

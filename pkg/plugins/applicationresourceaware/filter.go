@@ -13,14 +13,9 @@ import (
 
 func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeInfo *framework.NodeInfo) *framework.Status {
 	// only for deployment pods
-	deployName, err := utils.GetDeploymentNameByPod(pod, ara.replicasetLister)
+	deploy, err := utils.GetDeploymentByPod(pod, ara.replicasetLister, ara.deploymentLister)
 	if err != nil {
-		klog.V(6).Infof("get deployment name by pod failed: %v", err)
-		return nil
-	}
-	deploy, err := ara.deploymentLister.Deployments(pod.Namespace).Get(deployName)
-	if err != nil {
-		klog.V(6).Infof("get deployment by name failed: %v", err)
+		klog.V(6).Infof("get deployment by pod failed: %v", err)
 		return nil
 	}
 

@@ -21,6 +21,16 @@ rules:
   - get
   - patch
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  - replicasets
+  verbs:
+  - list
+  - watch
+  - get
+  - patch
+- apiGroups:
   - ""
   resources:
   - configmaps

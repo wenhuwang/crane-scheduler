@@ -64,6 +64,10 @@ func Run(cc *config.CompletedConfig, stopCh <-chan struct{}) error {
 		annotatorController := annotator.NewNodeAnnotator(
 			cc.KubeInformerFactory.Core().V1().Nodes(),
 			cc.KubeInformerFactory.Core().V1().Events(),
+			cc.KubeInformerFactory.Core().V1().Namespaces(),
+			cc.KubeInformerFactory.Apps().V1().Deployments(),
+			cc.KubeInformerFactory.Apps().V1().ReplicaSets(),
+			cc.KubeInformerFactory.Core().V1().Pods(),
 			cc.KubeClient,
 			cc.PromClient,
 			*cc.Policy,
