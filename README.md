@@ -48,6 +48,19 @@ spec:
         expr: label_replace(max_over_time(node:load5:ratio[1h]), "instance", "$1", "node", "(.*)")
       - record: load5_usage_max_1d
         expr: label_replace(max_over_time(node:load5:ratio[1d]), "instance", "$1", "node", "(.*)")
+    - name: k8s.rules
+      - expr: |
+          sum by (namespace, deployment) (label_replace(namespace:workload_cpu_usage:sum{}, "deployment","$1","workload","Deployment:(.*)")) / sum by (namespace, deployment) (kube_deployment_spec_replicas{})
+        record: pod_avg_cpu_usage
+      - expr: |
+          sum by (namespace, deployment) (label_replace(namespace:workload_memory_usage_wo_cache:sum{}, "deployment","$1","workload","Deployment:(.*)")) / sum by (namespace, deployment) (kube_deployment_spec_replicas{})
+        record: pod_avg_mem_usage
+      - expr: |
+          sum (label_replace(label_join(sum(irate(container_cpu_usage_seconds_total{job="kubelet", pod!="", image!=""}[5m])) by (namespace,   pod, cluster) * on (pod, namespace) group_left(owner_kind,owner_name) label_join(label_replace(label_join(label_replace(label_replace  (kube_pod_owner{job="kube-state-metrics"},"owner_kind", "Deployment", "owner_kind", "ReplicaSet"), "owner_kind", "Pod", "owner_kind",   "<none>"),"tmp",":","owner_name","pod"),"owner_name","$1","tmp","<none>:(.*)"), "pod_name", "", "pod", "_name"), "workload",":",  "owner_kind","owner_name"), "workload","$1","workload","(Deployment:.+)-(.+)")) by (namespace, workload, owner_kind, cluster)
+        record: namespace:workload_cpu_usage:sum
+      - expr: |
+          sum (label_replace(label_join(sum(container_memory_usage_bytes{job="kubelet", pod!="", image!=""} - container_memory_cache  {job="kubelet", pod!="", image!=""}) by (namespace, pod, cluster) * on (pod, namespace) group_left(owner_kind,owner_name) label_join  (label_replace(label_join(label_replace(label_replace(kube_pod_owner{job="kube-state-metrics"},"owner_kind", "Deployment",   "owner_kind", "ReplicaSet"), "owner_kind", "Pod", "owner_kind", "<none>"),"tmp",":","owner_name","pod"),"owner_name","$1","tmp",  "<none>:(.*)"), "pod_name", "", "pod", "_name"), "workload",":","owner_kind","owner_name"), "workload","$1","workload","(Deployment:.+)-(.+)")) by (namespace, workload, owner_kind, cluster)
+        record: namespace:workload_memory_usage_wo_cache:sum
 ```
 >**⚠️Troubleshooting:** The sampling interval of Prometheus must be less than 30 seconds, otherwise the above rules(such as cpu_usage_active) may not take effect.
 

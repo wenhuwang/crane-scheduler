@@ -1,0 +1,21 @@
+apiVersion: scheduler.policy.crane.io/v1alpha1
+kind: DynamicSchedulerPolicy
+spec:
+  syncAppPolicy:
+    - name: range_pod_avg_cpu_usage
+      period: 24h
+    - name: range_pod_avg_mem_usage
+      period: 24h
+  syncPolicy:
+    ## range usage
+    - name: range_cpu_usage_avg_5m
+      period: 24h
+    - name: range_mem_usage_avg_5m
+      period: 24h
+
+  predicate:
+    ##range usage
+    - name: range:cpu:range_pod_avg_cpu_usage:range_cpu_usage_avg_5m
+      maxLimitPecent: 0.65
+    - name: range:memory:range_pod_avg_mem_usage:range_mem_usage_avg_5m
+      maxLimitPecent: 0.65
