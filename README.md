@@ -19,37 +19,36 @@ metadata:
         role: alert-rules
 spec:
     groups:
-    - name: cpu_mem_usage_active
-      interval: 30s
-      rules:
-      - record: cpu_usage_active
-        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[30s])) * 100)
-      - record: mem_usage_active
-        expr: 100*(1-node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes)
-    - name: cpu-usage-5m
-      interval: 5m
-      rules:
-      - record: cpu_usage_max_avg_1h
-        expr: max_over_time(cpu_usage_avg_5m[1h])
-      - record: cpu_usage_max_avg_1d
-        expr: max_over_time(cpu_usage_avg_5m[1d])
-    - name: cpu-usage-1m
-      interval: 1m
-      rules:
-      - record: cpu_usage_avg_5m
-        expr: avg_over_time(cpu_usage_active[5m])
-    - name: mem-usage-5m
-      interval: 5m
-      rules:
-      - record: mem_usage_max_avg_1h
-        expr: max_over_time(mem_usage_avg_5m[1h])
-      - record: mem_usage_max_avg_1d
-        expr: max_over_time(mem_usage_avg_5m[1d])
-    - name: mem-usage-1m
-      interval: 1m
-      rules:
-      - record: mem_usage_avg_5m
-        expr: avg_over_time(mem_usage_active[5m])
+    - name: node.rules
+      - expr: 1 - (avg by (cluster, instance) (irate(node_cpu_seconds_total{mode="idle"}[30s])))
+        record: cpu_usage_active
+      - expr: 1-node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes
+        record: mem_usage_active
+      - expr: max_over_time(cpu_usage_avg_5m[1h])
+        record: cpu_usage_max_avg_1h
+      - expr: max_over_time(cpu_usage_avg_5m[1d])
+        record: cpu_usage_max_avg_1d
+      - expr: avg_over_time(cpu_usage_active[5m])
+        record: cpu_usage_avg_5m
+      - expr: max_over_time(mem_usage_avg_5m[1h])
+        record: mem_usage_max_avg_1h
+      - expr: max_over_time(mem_usage_avg_5m[1d])
+        record: mem_usage_max_avg_1d
+      - expr: avg_over_time(mem_usage_active[5m])
+        record: mem_usage_avg_5m
+    - name: k8s.rules
+      - expr: |
+          sum by (namespace, deployment) (label_replace(namespace:workload_cpu_usage:sum{}, "deployment","$1","workload","Deployment:(.*)")) / sum by (namespace, deployment) (kube_deployment_spec_replicas{})
+        record: pod_avg_cpu_usage
+      - expr: |
+          sum by (namespace, deployment) (label_replace(namespace:workload_memory_usage_wo_cache:sum{}, "deployment","$1","workload","Deployment:(.*)")) / sum by (namespace, deployment) (kube_deployment_spec_replicas{})
+        record: pod_avg_mem_usage
+      - expr: |
+          sum (label_replace(label_join(sum(irate(container_cpu_usage_seconds_total{job="kubelet", pod!="", image!=""}[5m])) by (namespace,   pod, cluster) * on (pod, namespace) group_left(owner_kind,owner_name) label_join(label_replace(label_join(label_replace(label_replace  (kube_pod_owner{job="kube-state-metrics"},"owner_kind", "Deployment", "owner_kind", "ReplicaSet"), "owner_kind", "Pod", "owner_kind",   "<none>"),"tmp",":","owner_name","pod"),"owner_name","$1","tmp","<none>:(.*)"), "pod_name", "", "pod", "_name"), "workload",":",  "owner_kind","owner_name"), "workload","$1","workload","(Deployment:.+)-(.+)")) by (namespace, workload, owner_kind, cluster)
+        record: namespace:workload_cpu_usage:sum
+      - expr: |
+          sum (label_replace(label_join(sum(container_memory_usage_bytes{job="kubelet", pod!="", image!=""} - container_memory_cache  {job="kubelet", pod!="", image!=""}) by (namespace, pod, cluster) * on (pod, namespace) group_left(owner_kind,owner_name) label_join  (label_replace(label_join(label_replace(label_replace(kube_pod_owner{job="kube-state-metrics"},"owner_kind", "Deployment",   "owner_kind", "ReplicaSet"), "owner_kind", "Pod", "owner_kind", "<none>"),"tmp",":","owner_name","pod"),"owner_name","$1","tmp",  "<none>:(.*)"), "pod_name", "", "pod", "_name"), "workload",":","owner_kind","owner_name"), "workload","$1","workload","(Deployment:.+)-(.+)")) by (namespace, workload, owner_kind, cluster)
+        record: namespace:workload_memory_usage_wo_cache:sum
 ```
 >**⚠️Troubleshooting:** The sampling interval of Prometheus must be less than 30 seconds, otherwise the above rules(such as cpu_usage_active) may not take effect.
 

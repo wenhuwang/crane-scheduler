@@ -16,6 +16,13 @@ spec:
       period: 15m
     - name: mem_usage_max_avg_1d
       period: 3h
+    ##load average
+    - name: load1_usage_avg_3m
+      period: 3m
+    - name: load5_usage_max_1h
+      period: 15m
+    - name: load5_usage_max_1d
+      period: 3h
 
   predicate:
     ##cpu usage
@@ -28,8 +35,14 @@ spec:
       maxLimitPecent: 0.65
     - name: mem_usage_max_avg_1h
       maxLimitPecent: 0.75
+    ##load average
+    - name: load1_usage_avg_3m
+      maxLimitPecent: 1
+    - name: load5_usage_max_1h
+      maxLimitPecent: 1
 
   priority:
+    ###score = sum(() * weight) / len,  0 <= score <= 10
     ##cpu usage
     - name: cpu_usage_avg_5m
       weight: 0.2
