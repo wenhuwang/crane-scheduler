@@ -18,6 +18,8 @@ const (
 	defaultStep                   = 30 * time.Minute
 
 	PrefixRange = "range_"
+
+	ErrEmptyMsg = "result is empty"
 )
 
 // PromClient provides client to interact with Prometheus.
@@ -238,7 +240,7 @@ func (p *promClient) queryRange(query string) (string, error) {
 	}
 
 	if len(metricValues) == 0 {
-		return "", fmt.Errorf("result is empty")
+		return "", fmt.Errorf(ErrEmptyMsg)
 	}
 
 	return metricValues, nil
