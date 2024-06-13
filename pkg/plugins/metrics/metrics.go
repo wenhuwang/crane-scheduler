@@ -22,3 +22,21 @@ var (
 func RegisterDynamicSchedulerMetrics() {
 	legacyregistry.MustRegister(DynamicPriorityAvailableNodesNumber)
 }
+
+const ApplicationResourceAwareSubsystem = "scheduler_ara"
+
+var (
+	ApplicationResourceAwareFilterFiltedNodes = metrics.NewCounterVec(
+		&metrics.CounterOpts{
+			Subsystem: ApplicationResourceAwareSubsystem,
+			Name:      "filter_filted_nodes_total",
+			Help:      "Number of filted nodes for filter",
+		},
+		[]string{"extension_point", "node"},
+	)
+)
+
+// RegisterAraSchedulerMetrics is used for register ApplicationResourceAware scheduler plugin metrics.
+func RegisterAraSchedulerMetrics() {
+	legacyregistry.MustRegister(ApplicationResourceAwareFilterFiltedNodes)
+}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/config"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
+	"github.com/gocrane/crane-scheduler/pkg/plugins/metrics"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
@@ -54,6 +55,9 @@ func New(plArgs runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	klog.V(5).Infof("Start plugin %s InformerFactory", Name)
 	informerFactory.Start(ctx.Done())
 	informerFactory.WaitForCacheSync(ctx.Done())
+
+	// 注册metrics
+	metrics.RegisterAraSchedulerMetrics()
 
 	ara := &ApplicationResourceAware{
 		schedulerPolicy:  schedulerPolicy,

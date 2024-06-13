@@ -15,7 +15,7 @@ import (
 	"github.com/gocrane/crane-scheduler/pkg/controller/annotator"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/config"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
-	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic/metrics"
+	"github.com/gocrane/crane-scheduler/pkg/plugins/metrics"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 )
 
