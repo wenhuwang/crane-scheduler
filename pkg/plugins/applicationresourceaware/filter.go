@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gocrane/crane-scheduler/pkg/plugins/metrics"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -74,10 +75,11 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 			}
 			if predictingOverLoad(nodeUsages, deployUsages, deltaUsages, policy, nodeCapacity, node.Name) {
 				klog.V(4).Infof("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name)
+				metrics.ApplicationResourceAwareFilterFiltedNodes.WithLabelValues("Filter", node.Name).Add(1)
+
 				return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name))
 			}
 		}
 	}
-
 	return nil
 }

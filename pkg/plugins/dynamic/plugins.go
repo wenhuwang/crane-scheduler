@@ -3,6 +3,7 @@ package dynamic
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -15,7 +16,7 @@ import (
 	"github.com/gocrane/crane-scheduler/pkg/controller/annotator"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/config"
 	"github.com/gocrane/crane-scheduler/pkg/plugins/apis/policy"
-	"github.com/gocrane/crane-scheduler/pkg/plugins/dynamic/metrics"
+	"github.com/gocrane/crane-scheduler/pkg/plugins/metrics"
 	"github.com/gocrane/crane-scheduler/pkg/utils"
 )
 
@@ -62,8 +63,12 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 	}
 
 	for _, policy := range ds.schedulerPolicy.Spec.Predicate {
-		activeDuration, err := utils.GetActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
+		// Ignore applicationResourceAware plugin policy
+		if strings.HasPrefix(policy.Name, utils.RangePrefix) {
+			continue
+		}
 
+		activeDuration, err := utils.GetActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
 		if err != nil || activeDuration == 0 {
 			klog.Warningf("[crane - %s] failed to get active duration: %v", ds.Name(), err)
 			continue
