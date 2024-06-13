@@ -102,8 +102,8 @@ func annotateDeploymentLoad(promClient prom.PromClient, kubeClient clientset.Int
 		return patchDeploymentAnnotation(kubeClient, deployment, key, value)
 	}
 
-	// 避免副本数为0导致没有监控指标问题
-	if *deployment.Spec.Replicas >= 1 {
+	// 避免副本数为0或者新应用没有历史数据导致获取监控指标失败
+	if *deployment.Spec.Replicas >= 1 && err.Error() != prometheus.ErrEmptyMsg {
 		return fmt.Errorf("failed to get deployment %s metrics %s: %v", key, deployment.Name, err)
 	}
 	return nil
