@@ -223,16 +223,21 @@ func MergeUsageRange(deltaStr string, deployStr string, mergeType string) (strin
 	}
 
 	var deltaUsages []float64
+	var mergeFlag bool
 	if deltaStr != "" {
 		deltaUsages, err = ParseRangeMetricsByString(deltaStr)
 		if err != nil {
 			return "", fmt.Errorf("parse node delta range metrics %s failed: %v", deltaStr, err)
 		}
 
-		if len(deltaUsages) != len(deployUsages) {
-			return "", fmt.Errorf("delta usages length %d or deployment usages length %d not match", len(deltaUsages), len(deployUsages))
+		if len(deltaUsages) > len(deployUsages) {
+			return "", fmt.Errorf("delta usages length %d more than the deployment usages length %d", len(deltaUsages), len(deployUsages))
+		} else if len(deltaUsages) == len(deployUsages) {
+			mergeFlag = true
 		}
-	} else {
+	}
+
+	if !mergeFlag {
 		deltaUsages = make([]float64, len(deployUsages))
 	}
 
