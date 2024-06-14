@@ -52,7 +52,7 @@ func New(plArgs runtime.Object, h framework.FrameworkHandle) (framework.Plugin, 
 	deployLister := informerFactory.Apps().V1().Deployments().Lister()
 	rsLister := informerFactory.Apps().V1().ReplicaSets().Lister()
 
-	klog.V(5).Infof("Start plugin %s InformerFactory", Name)
+	klog.Infof("Start plugin %s InformerFactory", Name)
 	informerFactory.Start(ctx.Done())
 	informerFactory.WaitForCacheSync(ctx.Done())
 

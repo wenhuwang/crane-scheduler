@@ -70,7 +70,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 
 		activeDuration, err := utils.GetActiveDuration(ds.schedulerPolicy.Spec.SyncPeriod, policy.Name)
 		if err != nil || activeDuration == 0 {
-			klog.Warningf("[crane - %s] failed to get active duration: %v", ds.Name(), err)
+			klog.V(5).Infof("Plugin[%s] failed to get active duration: %v", ds.Name(), err)
 			continue
 		}
 
@@ -85,7 +85,7 @@ func (ds *DynamicScheduler) Filter(ctx context.Context, state *framework.CycleSt
 // PreScore invoked at the PreScore extension point.
 // It records the number of available nodes for priority to metrics && logs.
 func (ds *DynamicScheduler) PreScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodes []*v1.Node) *framework.Status {
-	klog.V(4).Infof("[crane - %s] pod %s/%s available scoring nodes number %d", ds.Name(), pod.Namespace, pod.Name, len(nodes))
+	klog.V(5).Infof("Plugin[%s] pod %s/%s available scoring nodes number %d", ds.Name(), pod.Namespace, pod.Name, len(nodes))
 
 	defer func() {
 		metrics.DynamicPriorityAvailableNodesNumber.WithLabelValues("PreScore").Set(float64(len(nodes)))
@@ -120,7 +120,7 @@ func (ds *DynamicScheduler) Score(ctx context.Context, state *framework.CycleSta
 
 	score := getNodeScore(node.Name, nodeAnnotations, ds.schedulerPolicy.Spec)
 	finalScore := utils.NormalizeScore(int64(score-int(hotValue*10)), framework.MaxNodeScore, framework.MinNodeScore)
-	klog.V(4).Infof("[crane - %s] Node[%s]'s final score is %d, while score is %d and hotValue is %.2f", ds.Name(), node.Name, finalScore, score, hotValue)
+	klog.V(5).Infof("Plugin[%s] Node[%s]'s final score is %d, while score is %d and hotValue is %.2f", ds.Name(), node.Name, finalScore, score, hotValue)
 
 	return finalScore, nil
 }

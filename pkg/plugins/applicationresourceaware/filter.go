@@ -16,7 +16,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 	// only for deployment pods
 	deploy, err := utils.GetDeploymentByPod(pod, ara.replicasetLister, ara.deploymentLister)
 	if err != nil {
-		klog.V(6).Infof("get deployment by pod failed: %v", err)
+		klog.V(5).Infof("get deployment by pod failed: %v", err)
 		return nil
 	}
 
@@ -40,30 +40,30 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 			resource, deployMetricName, nodeMetricName := nameSlice[1], nameSlice[2], nameSlice[3]
 			activeDuration, err := utils.GetActiveDuration(ara.schedulerPolicy.Spec.SyncPeriod, nodeMetricName)
 			if err != nil || activeDuration == 0 {
-				klog.Warningf("Plugin[%s] failed to get active duration: %v", ara.Name(), err)
+				klog.V(5).Infof("Plugin[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
 			nodeUsages, err := utils.GetResourceUsageRange(node.Annotations, nodeMetricName, activeDuration)
 			if err != nil {
-				klog.Warningf("Plugin[%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", ara.Name(), nodeMetricName, node.Name, err)
+				klog.V(5).Infof("Plugin[%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", ara.Name(), nodeMetricName, node.Name, err)
 				continue
 			}
 
 			activeDuration, err = utils.GetActiveDuration(ara.schedulerPolicy.Spec.SyncAppPeriod, deployMetricName)
 			if err != nil || activeDuration == 0 {
-				klog.Warningf("Plugin[%s] failed to get active duration: %v", ara.Name(), err)
+				klog.V(5).Infof("Plugin[%s] failed to get active duration: %v", ara.Name(), err)
 				continue
 			}
 			deployUsages, err := utils.GetResourceUsageRange(deploy.Annotations, deployMetricName, activeDuration)
 			if err != nil {
-				klog.Warningf("Plugin[%s] can not get the usage of resource[%s] from deployment[%s]'s annotation: %v", ara.Name(), deployMetricName, deploy.Name, err)
+				klog.V(5).Infof("Plugin[%s] can not get the usage of resource[%s] from deployment[%s]'s annotation: %v", ara.Name(), deployMetricName, deploy.Name, err)
 				continue
 			}
 
 			deltaName := utils.DeltaPrefixName + deployMetricName
 			deltaUsages, err := utils.GetDeltaUsageRange(node.Annotations, deltaName)
 			if err != nil {
-				klog.Warningf("Plugin[%s] get node %s metrics %s from annotation failed: %v", ara.Name(), node.Name, deltaName, err)
+				klog.V(5).Infof("Plugin[%s] get node %s metrics %s from annotation failed: %v", ara.Name(), node.Name, deltaName, err)
 				continue
 			}
 
@@ -74,7 +74,7 @@ func (ara *ApplicationResourceAware) Filter(ctx context.Context, state *framewor
 				nodeCapacity = node.Status.Capacity.Memory().Value()
 			}
 			if predictingOverLoad(nodeUsages, deployUsages, deltaUsages, policy, nodeCapacity, node.Name) {
-				klog.V(4).Infof("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name)
+				klog.V(5).Infof("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name)
 				metrics.ApplicationResourceAwareFilterFiltedNodes.WithLabelValues("Filter", node.Name).Add(1)
 
 				return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Plugin[%s] node[%s] policy[%s] for pod[%s] is too high", ara.Name(), node.Name, policy.Name, pod.Name))
