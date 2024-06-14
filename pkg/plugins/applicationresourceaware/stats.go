@@ -18,18 +18,18 @@ const (
 func predictingOverLoad(nodeUsageStr, deployUsageStr, deltaUsageStr string, policy policy.PredicatePolicy, nodeCapacity int64, nodeName string) bool {
 	// threshold was set as 0 means that the filter according to this metric is useless.
 	if policy.MaxLimitPecent == 0 {
-		klog.Warningf("Plugin[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name, policy.Name)
+		klog.V(5).Infof("Plugin[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name, policy.Name)
 		return false
 	}
 
 	nodeUsage, err := utils.ParseRangeMetricsByString(nodeUsageStr)
 	if err != nil {
-		klog.Warningf("Plugin[%s] parse node %s range metrics failed: %v", Name, nodeName, err)
+		klog.V(5).Infof("Plugin[%s] parse node %s range metrics failed: %v", Name, nodeName, err)
 		return false
 	}
 	deployUsage, err := utils.ParseRangeMetricsByString(deployUsageStr)
 	if err != nil {
-		klog.Warningf("Plugin[%s] parse deployment range metrics failed: %v", Name, err)
+		klog.V(5).Infof("Plugin[%s] parse deployment range metrics failed: %v", Name, err)
 		return false
 	}
 
@@ -39,13 +39,13 @@ func predictingOverLoad(nodeUsageStr, deployUsageStr, deltaUsageStr string, poli
 	} else {
 		deltaUsage, err = utils.ParseRangeMetricsByString(deltaUsageStr)
 		if err != nil {
-			klog.Warningf("Plugin[%s] parse node %s delta metrics failed: %v", Name, nodeName, err)
+			klog.V(5).Infof("Plugin[%s] parse node %s delta metrics failed: %v", Name, nodeName, err)
 			return false
 		}
 	}
 
 	if len(nodeUsage) != len(deployUsage) || len(nodeUsage) != len(deltaUsage) {
-		klog.Warningf("Plugin[%s] node %s or deployment or delta usage annotations values illegel", Name, nodeName)
+		klog.V(5).Infof("Plugin[%s] node %s or deployment or delta usage annotations values illegel", Name, nodeName)
 		return false
 	}
 
