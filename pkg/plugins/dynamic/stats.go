@@ -38,13 +38,13 @@ func getScore(anno map[string]string, priorityPolicy policy.PriorityPolicy, sync
 func isOverLoad(name string, anno map[string]string, predicatePolicy policy.PredicatePolicy, activeDuration time.Duration) bool {
 	usage, err := utils.GetResourceUsage(anno, predicatePolicy.Name, activeDuration)
 	if err != nil {
-		klog.V(5).Infof("[crane] can not get the usage of resource[%s] from node[%s]'s annotation: %v", predicatePolicy.Name, name, err)
+		klog.V(5).Infof("Plugin[%s] can not get the usage of resource[%s] from node[%s]'s annotation: %v", Name, predicatePolicy.Name, name, err)
 		return false
 	}
 
 	// threshold was set as 0 means that the filter according to this metric is useless.
 	if predicatePolicy.MaxLimitPecent == 0 {
-		klog.V(6).Info("[crane] ignore the filter of resource[%s] for MaxLimitPecent was set as 0")
+		klog.V(6).Infof("Plugin[%s] ignore the filter of resource[%s] for MaxLimitPecent was set as 0", Name)
 		return false
 	}
 
@@ -59,7 +59,7 @@ func getNodeScore(name string, anno map[string]string, policySpec policy.PolicyS
 
 	lenPriorityPolicyList := len(policySpec.Priority)
 	if lenPriorityPolicyList == 0 {
-		klog.V(6).Infof("[crane] no priority policy exists, all nodes scores 0.")
+		klog.V(6).Infof("Plugin[%s] no priority policy exists, all nodes scores 0.", Name)
 		return 0
 	}
 
@@ -69,7 +69,7 @@ func getNodeScore(name string, anno map[string]string, policySpec policy.PolicyS
 
 		priorityScore, err := getScore(anno, priorityPolicy, policySpec.SyncPeriod)
 		if err != nil {
-			klog.V(5).Infof("[crane] failed to get node 's score: %v", name, priorityPolicy.Name, score)
+			klog.V(5).Infof("Plugin[%s] failed to get node %s score: %v", Name, name, err)
 		}
 
 		weight += priorityPolicy.Weight
@@ -92,7 +92,7 @@ func getNodeHotValue(node *v1.Node) float64 {
 		return 0
 	}
 
-	klog.V(6).Infof("[crane] Node[%s]'s hotvalue is %f\n", node.Name, hotvalue)
+	klog.V(6).Infof("Plugin[%s] Node[%s]'s hotvalue is %f", Name, node.Name, hotvalue)
 
 	return hotvalue
 }
