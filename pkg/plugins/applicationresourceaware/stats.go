@@ -44,14 +44,28 @@ func predictingOverLoad(nodeUsageStr, deployUsageStr, deltaUsageStr string, poli
 		}
 	}
 
-	if len(nodeUsage) != len(deployUsage) || len(nodeUsage) != len(deltaUsage) {
-		klog.V(5).Infof("Plugin[%s] node %s or deployment or delta usage annotations values illegel", Name, nodeName)
-		return false
+	var deployInvalid, deltaInvalid bool
+	if len(nodeUsage) != len(deployUsage) {
+		klog.V(5).Infof("Plugin[%s] node %s and deployment usage annotations values not match", Name, nodeName)
+		deployInvalid = true
+	}
+
+	if len(nodeUsage) != len(deltaUsage) {
+		klog.V(5).Infof("Plugin[%s] node %s delta usage annotations values illegel", Name, nodeName)
+		deltaInvalid = true
 	}
 
 	for i, nu := range nodeUsage {
-		usage := (nu*float64(nodeCapacity) + deployUsage[i] + deltaUsage[i]) / float64(nodeCapacity)
-		if usage > policy.MaxLimitPecent {
+		usage := nu * float64(nodeCapacity)
+		if !deltaInvalid {
+			usage += deltaUsage[i]
+		}
+
+		if !deployInvalid {
+			usage += deployUsage[i]
+		}
+		utilization := usage / float64(nodeCapacity)
+		if utilization > policy.MaxLimitPecent {
 			return true
 		}
 	}

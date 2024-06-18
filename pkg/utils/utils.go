@@ -141,7 +141,7 @@ func GetResourceUsage(anno map[string]string, key string, activeDuration time.Du
 func GetResourceUsageRange(anno map[string]string, key string, activeDuration time.Duration) (string, error) {
 	usedstr, ok := anno[key]
 	if !ok {
-		return "", fmt.Errorf("key[%s] not found", usedstr)
+		return "", nil
 	}
 
 	usedSlice := strings.Split(usedstr, ",")
@@ -200,13 +200,15 @@ func GetDeltaUsageRange(anno map[string]string, key string) (string, error) {
 
 func ParseRangeMetricsByString(str string) ([]float64, error) {
 	var result []float64
-	stringSlice := strings.Split(str, "|")
-	for _, v := range stringSlice {
-		fv, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return nil, err
+	if str != "" {
+		stringSlice := strings.Split(str, "|")
+		for _, v := range stringSlice {
+			fv, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, fv)
 		}
-		result = append(result, fv)
 	}
 
 	return result, nil
