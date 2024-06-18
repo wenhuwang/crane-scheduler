@@ -90,7 +90,7 @@ func (br *BindingRecords) GetLastNodeBindingCount(node string, timeRange time.Du
 		}
 	}
 
-	klog.V(4).Infof("The total Binding count is %d, while node[%s] count is %d",
+	klog.V(5).Infof("The total Binding count is %d, while node[%s] count is %d",
 		len(*br.bindings), node, cnt)
 
 	return cnt

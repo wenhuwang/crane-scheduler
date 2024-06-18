@@ -141,7 +141,7 @@ func GetResourceUsage(anno map[string]string, key string, activeDuration time.Du
 func GetResourceUsageRange(anno map[string]string, key string, activeDuration time.Duration) (string, error) {
 	usedstr, ok := anno[key]
 	if !ok {
-		return "", fmt.Errorf("key[%s] not found", usedstr)
+		return "", nil
 	}
 
 	usedSlice := strings.Split(usedstr, ",")
