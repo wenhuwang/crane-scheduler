@@ -226,7 +226,8 @@ func (p *promClient) queryRange(query string) (string, error) {
 	var metricValues string
 	if metrix, ok := result.(model.Matrix); ok && len(metrix) > 0 {
 		for i, elem := range metrix[0].Values {
-			if float64(elem.Value) < float64(0) || math.IsNaN(float64(elem.Value)) {
+			fv := float64(elem.Value)
+			if fv < float64(0) || math.IsInf(fv, 0) || math.IsNaN(fv) {
 				elem.Value = 0
 			}
 			// 根据当前索引是否为最后一个元素决定字符串拼接逻辑
