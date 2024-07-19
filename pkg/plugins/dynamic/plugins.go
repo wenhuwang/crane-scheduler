@@ -22,6 +22,7 @@ import (
 var _ framework.FilterPlugin = &DynamicScheduler{}
 var _ framework.ScorePlugin = &DynamicScheduler{}
 var _ framework.PreScorePlugin = &DynamicScheduler{}
+var _ framework.PostBindPlugin = &DynamicScheduler{}
 
 const (
 	// Name is the name of the plugin used in the plugin registry and configurations.
@@ -127,7 +128,7 @@ func (ds *DynamicScheduler) ScoreExtensions() framework.ScoreExtensions {
 }
 
 // pod调度完成以后将调度信息记录到bindingRecords中，用于后续的热点值计算
-func (ds *DynamicScheduler) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) *framework.Status {
+func (ds *DynamicScheduler) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
 	binding := &annotator.Binding{
 		Node:      nodeName,
 		Namespace: p.Namespace,
@@ -135,8 +136,6 @@ func (ds *DynamicScheduler) PostBind(ctx context.Context, state *framework.Cycle
 		Timestamp: time.Now().UTC().Unix(),
 	}
 	ds.bindingRecords.AddBinding(binding)
-
-	return framework.NewStatus(framework.Success, "")
 }
 
 // NewDynamicScheduler returns a Crane Scheduler object.
