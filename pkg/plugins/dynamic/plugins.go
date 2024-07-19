@@ -138,7 +138,7 @@ func (ds *DynamicScheduler) PostBind(ctx context.Context, state *framework.Cycle
 		Timestamp: time.Now().UTC().Unix(),
 	}
 	ds.bindingRecords.AddBinding(binding)
-	klog.V(4).Infof("[crane - %s] pod %s/%s post bind to node %s", ds.Name(), p.Namespace, p.Name, nodeName)
+	klog.V(4).Infof("Plugin[%s] pod %s/%s postBind to node %s", ds.Name(), p.Namespace, p.Name, nodeName)
 }
 
 // NewDynamicScheduler returns a Crane Scheduler object.
